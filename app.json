@@ -28,11 +28,12 @@
     },
     "plugins": [
       [
-        "expo-av",
+        "expo-audio",
         {
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-video"
     ]
   }
 }

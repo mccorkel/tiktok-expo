@@ -83,4 +83,23 @@ This document outlines the coding and development rules we follow in this projec
     - Avoid manual configuration structure
     - Let Amplify Gen 2 handle configuration mapping
 
+## Video Implementation
+
+## Audio Implementation
+- Use `expo-av` for audio configuration
+- Configure audio mode at app startup
+- Reference: [Expo AV Documentation](https://docs.expo.dev/versions/latest/sdk/audio-av/)
+
+### Example Usage
+```typescript
+import { Audio } from 'expo-av';
+
+await Audio.setAudioModeAsync({
+  allowsRecordingIOS: false,
+  playsInSilentModeIOS: true,
+  staysActiveInBackground: false,
+  shouldDuckAndroid: false,
+});
+```
+
 _Last updated: [Current Date]_ 

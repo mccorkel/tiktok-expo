@@ -1,6 +1,7 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { Video, AVPlaybackStatus } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { Audio } from 'expo-av';
 import { VideoMetadata } from '../../../public/assets/sample_videos/metadata';
 
 interface VideoCardProps {
@@ -18,51 +19,52 @@ const videoSources = {
 } as const;
 
 const VideoCard: React.FC<VideoCardProps> = ({ video, isVisible = false }) => {
-  const videoRef = useRef<Video>(null);
+  const player = useVideoPlayer(videoSources[video.filename as keyof typeof videoSources]);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
-    if (isVisible && videoRef.current) {
-      playPreview();
+    const configureAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          shouldDuckAndroid: false,
+        });
+      } catch (error) {
+        console.warn('Error configuring audio:', error);
+      }
+    };
+    configureAudio();
+  }, []);
+
+  useEffect(() => {
+    if (isVisible) {
+      player.seekBy(-player.currentTime);
+      player.play();
     } else {
-      // Stop video when not visible
-      videoRef.current?.stopAsync();
+      player.pause();
     }
-  }, [isVisible]);
+  }, [isVisible, player]);
 
-  const playPreview = async () => {
-    try {
-      await videoRef.current?.setPositionAsync(0); // Reset to start
-      await videoRef.current?.playAsync();
-      
-      // Set up loop
-      const interval = setInterval(async () => {
-        await videoRef.current?.setPositionAsync(0);
-        await videoRef.current?.playAsync();
-      }, 5000);
+  useEffect(() => {
+    const subscription = player.addListener('playingChange', (event) => {
+      setIsPlaying(event.isPlaying);
+    });
+    return () => subscription.remove();
+  }, [player]);
 
-      // Cleanup interval when component unmounts or video becomes invisible
-      return () => clearInterval(interval);
-    } catch (error) {
-      console.error('Error playing video:', error);
+  useEffect(() => {
+    if (isPlaying && player.currentTime >= 5) {
+      player.seekBy(-player.currentTime);
     }
-  };
+  }, [isPlaying, player]);
 
   return (
     <View style={styles.container}>
-      <Video
-        ref={videoRef}
-        source={videoSources[video.filename as keyof typeof videoSources]}
+      <VideoView
+        player={player}
         style={styles.video}
-        resizeMode="cover"
-        shouldPlay={false}
-        isLooping={false}
-        onPlaybackStatusUpdate={(status) => {
-          if (!status.isLoaded) return;
-          // Stop and reset after 5 seconds if still playing
-          if (status.positionMillis >= 5000 && status.isPlaying) {
-            videoRef.current?.setPositionAsync(0);
-          }
-        }}
       />
       <View style={styles.overlay}>
         <Text style={styles.title}>{video.title}</Text>
