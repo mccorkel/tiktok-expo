@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Button } from "react-native";
 import { getCurrentUser, fetchUserAttributes, signOut as amplifySignOut } from "aws-amplify/auth";
+import AuthenticatedLayout from '../layouts/AuthenticatedLayout';
+import { RouteProp } from '@react-navigation/native';
+import { RootTabParamList } from '../types/navigation';
 
 type Props = {
-  route: { params: { signOut: () => void } };
+  route: RouteProp<RootTabParamList, 'Profile'>;
 };
 
-const ProfileScreen = ({ route: { params: { signOut: authSignOut } } }: Props) => {
+const ProfileScreen: React.FC<Props> = ({ route }) => {
+  const { signOut } = route.params;
   const [userInfo, setUserInfo] = useState({ email: 'Loading...', id: '' });
 
   useEffect(() => {
@@ -29,7 +33,7 @@ const ProfileScreen = ({ route: { params: { signOut: authSignOut } } }: Props) =
 
   const handleSignOut = async () => {
     try {
-      authSignOut();
+      signOut();
       await amplifySignOut();
     } catch (error) {
       console.error('Sign out error:', error);
@@ -37,8 +41,8 @@ const ProfileScreen = ({ route: { params: { signOut: authSignOut } } }: Props) =
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
+    <AuthenticatedLayout>
+      <View style={styles.container}>
         <Text style={styles.title}>Profile</Text>
         <Text style={styles.email}>{userInfo.email}</Text>
         <Button 
@@ -47,7 +51,7 @@ const ProfileScreen = ({ route: { params: { signOut: authSignOut } } }: Props) =
           color="#FF3B30"
         />
       </View>
-    </View>
+    </AuthenticatedLayout>
   );
 };
 

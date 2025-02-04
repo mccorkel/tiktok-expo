@@ -5,13 +5,14 @@ import { withAuthenticator } from "@aws-amplify/ui-react-native";
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import outputs from "./amplify_outputs.json";
 
-// Screens
+// Import screens
 import HomeScreen from './src/screens/HomeScreen';
 import BrowseScreen from './src/screens/BrowseScreen';
 import FollowingScreen from './src/screens/FollowingScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+
+import outputs from "./amplify_outputs.json";
 
 Amplify.configure(outputs);
 

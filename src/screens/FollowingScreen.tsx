@@ -1,11 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import AuthenticatedLayout from '../layouts/AuthenticatedLayout';
 
-const FollowingScreen = () => {
+const FollowingScreen: React.FC = () => {
   return (
-    <View style={styles.container}>
-      <Text>Following Screen</Text>
-    </View>
+    <AuthenticatedLayout>
+      <View style={styles.container}>
+        <Text>Following Screen</Text>
+      </View>
+    </AuthenticatedLayout>
   );
 };
 

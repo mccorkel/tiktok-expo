@@ -50,4 +50,11 @@
     - ProfileScreen.tsx
     - LoginScreen.tsx
 
+## Public Assets
+- assets/
+  - sample_videos/
+    - videos/
+    - thumbnails/
+    - metadata.ts
+
 _Last updated: [Current Date]_ 

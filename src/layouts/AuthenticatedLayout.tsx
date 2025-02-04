@@ -1,12 +1,12 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface AuthenticatedLayoutProps {
   children: React.ReactNode;
 }
 
-const AuthenticatedLayout = ({ children }: AuthenticatedLayoutProps) => {
+const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>

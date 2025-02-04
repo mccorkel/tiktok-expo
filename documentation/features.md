@@ -29,4 +29,10 @@ This document tracks the features that have been implemented in the application.
 ## Planned Features
 _(Add planned features here)_
 
+## Development Features
+- Sample Content
+  - Development video assets
+  - Video metadata
+  - Thumbnails for testing
+
 _Last updated: [Current Date]_ 

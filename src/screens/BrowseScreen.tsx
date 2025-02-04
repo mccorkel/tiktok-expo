@@ -1,11 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import AuthenticatedLayout from '../layouts/AuthenticatedLayout';
 
-const BrowseScreen = () => {
+const BrowseScreen: React.FC = () => {
   return (
-    <View style={styles.container}>
-      <Text>Browse Screen</Text>
-    </View>
+    <AuthenticatedLayout>
+      <View style={styles.container}>
+        <Text>Browse Screen</Text>
+      </View>
+    </AuthenticatedLayout>
   );
 };
 
