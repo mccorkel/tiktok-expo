@@ -1,104 +1,125 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, SafeAreaView, Button, Alert } from "react-native";
+import React from "react";
+import { StyleSheet } from "react-native";
 import { Amplify } from "aws-amplify";
-import { getCurrentUser, fetchUserAttributes, signOut as amplifySignOut } from "aws-amplify/auth";
 import { withAuthenticator } from "@aws-amplify/ui-react-native";
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import outputs from "./amplify_outputs.json";
+
+// Screens
+import HomeScreen from './src/screens/HomeScreen';
+import BrowseScreen from './src/screens/BrowseScreen';
+import FollowingScreen from './src/screens/FollowingScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 
 Amplify.configure(outputs);
 
-type AppProps = {
-  signOut: () => void;
-  user: { username?: string };
+type RootTabParamList = {
+  Home: undefined;
+  Browse: undefined;
+  Following: undefined;
+  Profile: { signOut: () => void };
 };
 
-const App = ({ signOut: authSignOut, user }: AppProps) => {
-  const [userInfo, setUserInfo] = useState({ email: 'Loading...', id: '' });
+const Tab = createBottomTabNavigator<RootTabParamList>();
 
-  const handleSignOut = async () => {
-    try {
-      authSignOut();
-      await amplifySignOut();
-    } catch (error) {
-      console.error('Sign out error:', error);
-    }
-  };
+type AppProps = {
+  signOut: () => void;
+};
 
-  useEffect(() => {
-    const getUser = async () => {
-      try {
-        const currentUser = await getCurrentUser();
-        const attributes = await fetchUserAttributes();
-        console.log('User attributes:', attributes);
-        setUserInfo({
-          email: attributes.email || 'No email found',
-          id: currentUser.username
-        });
-      } catch (error) {
-        console.error('Error getting user:', error);
-        setUserInfo({ email: 'Error loading user', id: '' });
-      }
-    };
+const TAB_COLORS = {
+  home: '#007AFF',    // Keep blue for home
+  browse: '#34C759',  // Green for browse
+  following: '#FF3B30', // Red for following
+  profile: '#AF52DE'  // Purple for profile
+};
 
-    getUser();
-  }, []);
-
+const App = ({ signOut }: AppProps) => {
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.content}>
-        <View style={styles.debugBox}>
-          <Text style={styles.text}>
-            Email: {userInfo.email}
-          </Text>
-          <Text style={styles.subText}>
-            ID: {userInfo.id}
-          </Text>
-        </View>
-        <View style={styles.buttonContainer}>
-          <Button 
-            title="Sign Out" 
-            onPress={handleSignOut}
-            color="#FF3B30"
-          />
-        </View>
-      </View>
-    </SafeAreaView>
+    <NavigationContainer>
+      <Tab.Navigator
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: styles.tabBar,
+          tabBarActiveTintColor: '#007AFF',
+          tabBarInactiveTintColor: '#999999',
+        }}
+      >
+        <Tab.Screen 
+          name="Home" 
+          component={HomeScreen}
+          options={{
+            tabBarIcon: ({ focused, size }) => (
+              <Ionicons 
+                name="home" 
+                color={focused ? TAB_COLORS.home : '#999999'} 
+                size={size} 
+              />
+            ),
+            tabBarActiveTintColor: TAB_COLORS.home,
+          }}
+        />
+        <Tab.Screen 
+          name="Browse" 
+          component={BrowseScreen}
+          options={{
+            tabBarIcon: ({ focused, size }) => (
+              <Ionicons 
+                name="compass" 
+                color={focused ? TAB_COLORS.browse : '#999999'} 
+                size={size} 
+              />
+            ),
+            tabBarActiveTintColor: TAB_COLORS.browse,
+          }}
+        />
+        <Tab.Screen 
+          name="Following" 
+          component={FollowingScreen}
+          options={{
+            tabBarIcon: ({ focused, size }) => (
+              <Ionicons 
+                name="heart" 
+                color={focused ? TAB_COLORS.following : '#999999'} 
+                size={size} 
+              />
+            ),
+            tabBarActiveTintColor: TAB_COLORS.following,
+          }}
+        />
+        <Tab.Screen 
+          name="Profile" 
+          component={ProfileScreen}
+          initialParams={{ signOut }}
+          options={{
+            tabBarIcon: ({ focused, size }) => (
+              <Ionicons 
+                name="person" 
+                color={focused ? TAB_COLORS.profile : '#999999'} 
+                size={size} 
+              />
+            ),
+            tabBarActiveTintColor: TAB_COLORS.profile,
+          }}
+        />
+      </Tab.Navigator>
+    </NavigationContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
+  tabBar: {
     backgroundColor: '#fff',
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  debugBox: {
-    backgroundColor: '#007AFF',
-    padding: 20,
-    borderRadius: 10,
-    width: '80%',
-    alignItems: 'center',
-  },
-  text: {
-    fontSize: 20,
-    color: '#fff',
-    textAlign: 'center',
-  },
-  buttonContainer: {
-    marginTop: 20,
-    width: '80%',
-  },
-  subText: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.8,
-    textAlign: 'center',
-    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    height: 60,
+    paddingBottom: 8,
   },
 });
 
