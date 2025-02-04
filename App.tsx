@@ -65,14 +65,9 @@ const App = ({ signOut }: AppProps) => {
           name="Browse" 
           component={BrowseScreen}
           options={{
-            tabBarIcon: ({ focused, size }) => (
-              <Ionicons 
-                name="compass" 
-                color={focused ? TAB_COLORS.browse : '#999999'} 
-                size={size} 
-              />
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="compass-outline" size={size} color={color} />
             ),
-            tabBarActiveTintColor: TAB_COLORS.browse,
           }}
         />
         <Tab.Screen 

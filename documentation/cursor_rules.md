@@ -84,6 +84,25 @@ This document outlines the coding and development rules we follow in this projec
     - Let Amplify Gen 2 handle configuration mapping
 
 ## Video Implementation
+- Use WebView with Amazon IVS Web SDK for video playback
+- Keep native VideoCard as fallback
+- Reference: [IVS Web SDK Documentation](https://docs.aws.amazon.com/ivs/latest/userguide/player-web-sdk.html)
+
+### Example Usage
+```typescript
+import { WebView } from 'react-native-webview';
+
+// Load IVS player in WebView
+const htmlContent = `
+  <script src="https://player.live-video.net/1.19.0/amazon-ivs-player.min.js"></script>
+  <div id="video-player"></div>
+  <script>
+    const player = IVSPlayer.create();
+    player.attachHTMLVideoElement(document.getElementById('video-player'));
+    player.load(videoUrl);
+  </script>
+`;
+```
 
 ## Audio Implementation
 - Use `expo-av` for audio configuration
