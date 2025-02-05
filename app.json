@@ -14,27 +14,42 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.tiktokexpo"
+      "bundleIdentifier": "com.anonymous.tiktokexpo",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera for live streaming",
+        "NSMicrophoneUsageDescription": "This app uses the microphone for live streaming"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.tiktokexpo"
+      "package": "com.anonymous.tiktokexpo",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       [
-        "expo-audio",
+        "expo-camera",
         {
-          "microphonePermission": false
+          "cameraPermission": "We need access to your camera for live streaming",
+          "microphonePermission": "We need access to your microphone for live streaming"
         }
       ],
       "expo-video",
       "expo-asset"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d7bbfc76-8691-4e49-a0ce-e7c257cea149"
+      }
+    },
+    "owner": "tigerpanda"
   }
 }

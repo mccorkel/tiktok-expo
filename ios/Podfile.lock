@@ -10,6 +10,8 @@ PODS:
     - React-Codegen
     - React-Core
     - ReactCommon/turbomodule/core
+  - ApiVideoLiveStream (1.4.6):
+    - HaishinKit (= 1.9.3)
   - boost (1.84.0)
   - DoubleConversion (1.1.6)
   - EXAV (15.0.2):
@@ -23,6 +25,10 @@ PODS:
     - ExpoModulesCore
   - ExpoAudio (0.3.4):
     - ExpoModulesCore
+  - ExpoCamera (16.0.14):
+    - ExpoModulesCore
+    - ZXingObjC/OneD
+    - ZXingObjC/PDF417
   - ExpoFileSystem (18.0.8):
     - ExpoModulesCore
   - ExpoFont (13.0.3):
@@ -59,9 +65,12 @@ PODS:
   - FBLazyVector (0.76.6)
   - fmt (9.1.0)
   - glog (0.3.5)
+  - HaishinKit (1.9.3):
+    - Logboard (~> 2.5.0)
   - hermes-engine (0.76.6):
     - hermes-engine/Pre-built (= 0.76.6)
   - hermes-engine/Pre-built (0.76.6)
+  - Logboard (2.5.0)
   - RCT-Folly (2024.01.01.00):
     - boost
     - DoubleConversion
@@ -1300,6 +1309,28 @@ PODS:
     - Yoga
   - react-native-get-random-values (1.11.0):
     - React-Core
+  - react-native-livestream (2.0.2):
+    - ApiVideoLiveStream (= 1.4.6)
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.01.01.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - react-native-netinfo (11.4.1):
     - React-Core
   - react-native-safe-area-context (4.14.1):
@@ -1788,6 +1819,11 @@ PODS:
     - Yoga
   - SocketRocket (0.7.1)
   - Yoga (0.0.0)
+  - ZXingObjC/Core (3.6.9)
+  - ZXingObjC/OneD (3.6.9):
+    - ZXingObjC/Core
+  - ZXingObjC/PDF417 (3.6.9):
+    - ZXingObjC/Core
 
 DEPENDENCIES:
   - amazon-ivs-react-native-player (from `../node_modules/amazon-ivs-react-native-player`)
@@ -1799,6 +1835,7 @@ DEPENDENCIES:
   - Expo (from `../node_modules/expo`)
   - ExpoAsset (from `../node_modules/expo-asset/ios`)
   - ExpoAudio (from `../node_modules/expo-audio/ios`)
+  - ExpoCamera (from `../node_modules/expo-camera/ios`)
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
   - ExpoFont (from `../node_modules/expo-font/ios`)
   - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
@@ -1841,6 +1878,7 @@ DEPENDENCIES:
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
+  - "react-native-livestream (from `../node_modules/@api.video/react-native-livestream`)"
   - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - "react-native-slider (from `../node_modules/@react-native-community/slider`)"
@@ -1880,8 +1918,12 @@ DEPENDENCIES:
 SPEC REPOS:
   trunk:
     - AmazonIVSPlayer
+    - ApiVideoLiveStream
+    - HaishinKit
+    - Logboard
     - React-Codegen
     - SocketRocket
+    - ZXingObjC
 
 EXTERNAL SOURCES:
   amazon-ivs-react-native-player:
@@ -1902,6 +1944,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-asset/ios"
   ExpoAudio:
     :path: "../node_modules/expo-audio/ios"
+  ExpoCamera:
+    :path: "../node_modules/expo-camera/ios"
   ExpoFileSystem:
     :path: "../node_modules/expo-file-system/ios"
   ExpoFont:
@@ -1983,6 +2027,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
   react-native-get-random-values:
     :path: "../node_modules/react-native-get-random-values"
+  react-native-livestream:
+    :path: "../node_modules/@api.video/react-native-livestream"
   react-native-netinfo:
     :path: "../node_modules/@react-native-community/netinfo"
   react-native-safe-area-context:
@@ -2058,6 +2104,7 @@ SPEC CHECKSUMS:
   amazon-ivs-react-native-player: 26b73e30380ccf132470c0829e6fd7bdf1db1f55
   AmazonIVSPlayer: 056aa543826328b578f51d5f3a1ac47b227d813d
   AmplifyRTNCore: 386947686d623bd84609d520645ac4f152489b0b
+  ApiVideoLiveStream: 82c2877eb24a18fdf1ba381e840bba4514774bcb
   boost: 1dca942403ed9342f98334bf4c3621f011aa7946
   DoubleConversion: f16ae600a246532c4020132d54af21d0ddb2a385
   EXAV: 4c41f0a6ae54a0b96597abc90e37962ab2ee0d85
@@ -2065,6 +2112,7 @@ SPEC CHECKSUMS:
   Expo: f160c4be97b390767b78adaae25fd9492bebb6c6
   ExpoAsset: 715ce37a36951fee71c32773b3be50f2285e2fbe
   ExpoAudio: def3d19cca13f587a2dfe22eb92302dc3d28ce1a
+  ExpoCamera: 5b48734e47a2e8fa6fc16835531fcf97cbf9e0e2
   ExpoFileSystem: f1bc322bd3b981ecb0898b120a80eede55e9abd9
   ExpoFont: 38656978c2a4022fb7e0c43e4968d66340f5e2f3
   ExpoKeepAwake: 62ff49bbc3bff90d8ee28329190f9ba371bf88e7
@@ -2074,7 +2122,9 @@ SPEC CHECKSUMS:
   FBLazyVector: be509404b5de73a64a74284edcaf73a5d1e128b1
   fmt: 10c6e61f4be25dc963c36bd73fc7b1705fe975be
   glog: 08b301085f15bcbb6ff8632a8ebaf239aae04e6a
+  HaishinKit: 14d2b1913144ec0dc0b6a8d8ddc75684b4852670
   hermes-engine: 1949ca944b195a8bde7cbf6316b9068e19cf53c6
+  Logboard: 4674a3d86681539a0ad1fca528d888b90871e268
   RCT-Folly: 84578c8756030547307e4572ab1947de1685c599
   RCTDeprecation: 063fc281b30b7dc944c98fe53a7e266dab1a8706
   RCTRequired: 8eda2a5a745f6081157a4f34baac40b65fe02b31
@@ -2106,6 +2156,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 89885d1518433a462fe64b68bf5e097997380090
   React-microtasksnativemodule: 36341e09dcd1df535503e6ed2ddf88f10da56d52
   react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
+  react-native-livestream: 2c0657aa80ff4ce6c7c390763b6af29bc3d6cca5
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
   react-native-safe-area-context: 2985d96d364676d1e2e2d5e77f64860874e31e13
   react-native-slider: d1a9121980fc81678c6d30b82f312c778fba563c
@@ -2142,6 +2193,7 @@ SPEC CHECKSUMS:
   RNScreens: 351f431ef2a042a1887d4d90e1c1024b8ae9d123
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: be6f55a028e86c83ae066f018e9b5d24ffc45436
+  ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 
 PODFILE CHECKSUM: 9ebdb58c82c5a58f55a5ecdf053fc86d59d5740a
 

@@ -5,12 +5,14 @@ import { withAuthenticator } from "@aws-amplify/ui-react-native";
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // Import screens
 import HomeScreen from './src/screens/HomeScreen';
 import BrowseScreen from './src/screens/BrowseScreen';
 import FollowingScreen from './src/screens/FollowingScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import GoLiveScreen from './src/screens/GoLiveScreen';
 
 import outputs from "./amplify_outputs.json";
 
@@ -21,6 +23,7 @@ type RootTabParamList = {
   Browse: undefined;
   Following: undefined;
   Profile: { signOut: () => void };
+  GoLive: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -97,6 +100,16 @@ const App = ({ signOut }: AppProps) => {
               />
             ),
             tabBarActiveTintColor: TAB_COLORS.profile,
+          }}
+        />
+        <Tab.Screen 
+          name="GoLive" 
+          component={GoLiveScreen}
+          options={{
+            tabBarIcon: ({ color }) => (
+              <MaterialCommunityIcons name="record-circle-outline" size={24} color={color} />
+            ),
+            tabBarLabel: 'Go Live',
           }}
         />
       </Tab.Navigator>

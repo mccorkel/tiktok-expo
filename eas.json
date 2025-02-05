@@ -1,0 +1,16 @@
+{
+    "build": {
+      "production": {
+        "ios": {
+          "distribution": "store",
+          "buildConfiguration": "Release"
+        }
+      },
+      "preview": {
+        "ios": {
+          "distribution": "internal",
+          "buildConfiguration": "Debug"
+        }
+      }
+    }
+  }
