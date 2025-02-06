@@ -1,80 +1,79 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Button } from "react-native";
-import { getCurrentUser, fetchUserAttributes, signOut as amplifySignOut } from "aws-amplify/auth";
-import AuthenticatedLayout from '../layouts/AuthenticatedLayout';
-import { RouteProp } from '@react-navigation/native';
-import { RootTabParamList } from '../types/navigation';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { getCurrentUser, fetchUserAttributes, signOut } from 'aws-amplify/auth';
+import { useNavigation } from '@react-navigation/native';
 
-type Props = {
-  route: RouteProp<RootTabParamList, 'Profile'>;
-};
-
-const ProfileScreen: React.FC<Props> = ({ route }) => {
-  const { signOut } = route.params;
-  const [userInfo, setUserInfo] = useState({ email: 'Loading...', id: '' });
+export default function ProfileScreen() {
+  const navigation = useNavigation();
+  const [userInfo, setUserInfo] = useState({ email: 'Loading...', username: '' });
 
   useEffect(() => {
-    const getUser = async () => {
+    async function loadUserInfo() {
       try {
         const currentUser = await getCurrentUser();
         const attributes = await fetchUserAttributes();
         setUserInfo({
           email: attributes.email || 'No email found',
-          id: currentUser.username
+          username: currentUser.username
         });
       } catch (error) {
-        console.error('Error getting user:', error);
-        setUserInfo({ email: 'Error loading user', id: '' });
+        console.error('Error loading user info:', error);
+        setUserInfo({ email: 'Error loading user', username: '' });
       }
-    };
-
-    getUser();
+    }
+    loadUserInfo();
   }, []);
 
   const handleSignOut = async () => {
     try {
-      signOut();
-      await amplifySignOut();
+      await signOut();
+      console.log('Successfully signed out');
+      // Navigation will be handled by the auth listener
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('Error signing out:', error);
     }
   };
 
   return (
-    <AuthenticatedLayout>
-      <View style={styles.container}>
-        <Text style={styles.title}>Profile</Text>
-        <Text style={styles.email}>{userInfo.email}</Text>
-        <Button 
-          title="Sign Out" 
-          onPress={handleSignOut}
-          color="#FF3B30"
-        />
-      </View>
-    </AuthenticatedLayout>
+    <View style={styles.container}>
+      <Text style={styles.email}>{userInfo.email}</Text>
+      <Text style={styles.username}>{userInfo.username}</Text>
+      <TouchableOpacity 
+        style={styles.signOutButton} 
+        onPress={handleSignOut}
+      >
+        <Text style={styles.signOutText}>Sign Out</Text>
+      </TouchableOpacity>
+    </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#fff',
     padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
   },
   email: {
     fontSize: 16,
-    marginBottom: 30,
+    marginBottom: 8,
   },
-});
-
-export default ProfileScreen; 
+  username: {
+    fontSize: 16,
+    marginBottom: 32,
+    color: '#666',
+  },
+  signOutButton: {
+    backgroundColor: '#DC3546',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  signOutText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+}); 
