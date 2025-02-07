@@ -1,34 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { getCurrentUser, fetchUserAttributes, signOut } from 'aws-amplify/auth';
-import { useNavigation } from '@react-navigation/native';
+import { signOut, getCurrentUser } from 'aws-amplify/auth';
+import { useChat } from '../providers/ChatProvider';
 
 export default function ProfileScreen() {
-  const navigation = useNavigation();
-  const [userInfo, setUserInfo] = useState({ email: 'Loading...', username: '' });
+  const { getUserChatRoom, listChannels } = useChat();
+  const [channelReady, setChannelReady] = useState(false);
 
   useEffect(() => {
-    async function loadUserInfo() {
-      try {
-        const currentUser = await getCurrentUser();
-        const attributes = await fetchUserAttributes();
-        setUserInfo({
-          email: attributes.email || 'No email found',
-          username: currentUser.username
-        });
-      } catch (error) {
-        console.error('Error loading user info:', error);
-        setUserInfo({ email: 'Error loading user', username: '' });
-      }
-    }
-    loadUserInfo();
+    checkChannel();
   }, []);
+
+  const checkChannel = async () => {
+    try {
+      const user = await getCurrentUser();
+      const channels = await listChannels();
+      setChannelReady(channels.length > 0);
+    } catch (error) {
+      console.error('Error checking channel:', error);
+    }
+  };
 
   const handleSignOut = async () => {
     try {
       await signOut();
-      console.log('Successfully signed out');
-      // Navigation will be handled by the auth listener
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -36,8 +31,9 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.email}>{userInfo.email}</Text>
-      <Text style={styles.username}>{userInfo.username}</Text>
+      <Text style={styles.status}>
+        Chat Channel Status: {channelReady ? '✅ Ready' : '⏳ Setting up...'}
+      </Text>
       <TouchableOpacity 
         style={styles.signOutButton} 
         onPress={handleSignOut}
@@ -75,5 +71,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  status: {
+    color: '#666',
+    fontSize: 16,
+    marginBottom: 32,
   },
 }); 

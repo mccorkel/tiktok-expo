@@ -3,13 +3,14 @@ module.exports = function(api) {
   return {
     presets: ['babel-preset-expo'],
     plugins: [
-      ["module:react-native-dotenv", {
-        "moduleName": "@env",
-        "path": ".env.local",
-        "blacklist": null,
-        "whitelist": null,
-        "safe": false,
-        "allowUndefined": true
+      ['@babel/plugin-proposal-class-static-block'],
+      ["module:react-native-dotenv"],
+      ['module-resolver', {
+        alias: {
+          'stream': 'stream-browserify',
+          'buffer': '@craftzdog/react-native-buffer',
+          'web-streams-polyfill/es6': 'web-streams-polyfill'
+        }
       }]
     ]
   };

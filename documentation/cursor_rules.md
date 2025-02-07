@@ -121,4 +121,75 @@ await Audio.setAudioModeAsync({
 });
 ```
 
+# Amplify Gen 2 Rules & Notes
+
+## Auth Permissions
+
+When granting permissions in auth/resource.ts:
+
+1. Use the `access` property to grant permissions between resources:
+```typescript
+export const auth = defineAuth({
+  // ...other config
+  access: (allow) => [
+    allow.resource(someFunction).to(['manageUsers'])
+  ]
+});
+```
+
+2. Use `authenticatedRole` to grant AWS service permissions to authenticated users:
+```typescript
+export const auth = defineAuth({
+  // ...other config
+  authenticatedRole: {
+    statements: [
+      {
+        effect: 'Allow',
+        actions: [
+          'service:Action1',
+          'service:Action2'
+        ],
+        resources: ['*']
+      }
+    ]
+  }
+});
+```
+
+### Common Auth Actions
+- manageUsers - Full CRUD access to users
+- manageGroupMembership - Add/remove users from groups
+- manageGroups - CRUD access to groups
+- createUser - Create new users only
+- deleteUser - Delete users only
+- getUser - Read user info only
+- listUsers - List users in pool
+
+Reference: [Auth Resource Access Documentation](https://docs.amplify.aws/react-native/build-a-backend/auth/grant-access-to-auth-resources/)
+
+## Amplify Gen 2 Service Permissions
+
+### IVS/IVS Chat Permissions
+To grant IVS permissions, export a permissions object from auth/resource.ts:
+```typescript
+// In auth/resource.ts
+export const auth = defineAuth({
+  loginWith: { email: true },
+  userAttributes: {
+    email: { required: true, mutable: true }
+  }
+});
+
+// Add service permissions
+export const permissions = {
+  ivs: {
+    allow: true  // Grants necessary IVS/IVS Chat permissions to authenticated users
+  }
+};
+```
+
+This is the preferred way to grant AWS service permissions in Amplify Gen 2, rather than using IAM roles directly.
+
+Reference: [Amplify Gen 2 Auth Resource](https://docs.amplify.aws/gen2/build-a-backend/auth/)
+
 _Last updated: [Current Date]_ 

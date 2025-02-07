@@ -1,4 +1,9 @@
-import React from "react";
+// Remove the polyfills import and setup
+// import { setupPolyfills } from './src/utils/polyfills';
+// setupPolyfills();
+
+import './src/utils/stream-polyfill';
+import React, { useEffect } from "react";
 import { StyleSheet } from "react-native";
 import { Amplify } from "aws-amplify";
 import { withAuthenticator } from "@aws-amplify/ui-react-native";
@@ -6,6 +11,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { ChatProvider, useChat } from './src/providers/ChatProvider';
+import { getCurrentUser } from 'aws-amplify/auth';
 
 // Import screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -13,6 +20,7 @@ import BrowseScreen from './src/screens/BrowseScreen';
 import FollowingScreen from './src/screens/FollowingScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import GoLiveScreen from './src/screens/GoLiveScreen';
+import TestChatScreen from './src/screens/TestChatScreen';
 
 import outputs from "./amplify_outputs.json";
 
@@ -22,15 +30,12 @@ type RootTabParamList = {
   Home: undefined;
   Browse: undefined;
   Following: undefined;
-  Profile: { signOut: () => void };
+  Profile: undefined;
   GoLive: undefined;
+  TestChat: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
-
-type AppProps = {
-  signOut: () => void;
-};
 
 const TAB_COLORS = {
   home: '#007AFF',    // Keep blue for home
@@ -39,83 +44,116 @@ const TAB_COLORS = {
   profile: '#AF52DE'  // Purple for profile
 };
 
-const App = ({ signOut }: AppProps) => {
+function ChannelSetup() {
+  const { getUserChatRoom } = useChat();
+
+  useEffect(() => {
+    setupUserChannel();
+  }, []);
+
+  const setupUserChannel = async () => {
+    try {
+      const user = await getCurrentUser();
+      await getUserChatRoom(
+        user.userId,
+        user.signInDetails?.loginId || 'Anonymous'
+      );
+    } catch (error) {
+      console.error('Error setting up user channel:', error);
+    }
+  };
+
+  return null;
+}
+
+function App() {
   return (
-    <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: styles.tabBar,
-          tabBarActiveTintColor: '#007AFF',
-          tabBarInactiveTintColor: '#999999',
-        }}
-      >
-        <Tab.Screen 
-          name="Home" 
-          component={HomeScreen}
-          options={{
-            tabBarIcon: ({ focused, size }) => (
-              <Ionicons 
-                name="home" 
-                color={focused ? TAB_COLORS.home : '#999999'} 
-                size={size} 
-              />
-            ),
-            tabBarActiveTintColor: TAB_COLORS.home,
+    <ChatProvider>
+      <ChannelSetup />
+      <NavigationContainer>
+        <Tab.Navigator
+          screenOptions={{
+            headerShown: false,
+            tabBarStyle: styles.tabBar,
+            tabBarActiveTintColor: '#007AFF',
+            tabBarInactiveTintColor: '#999999',
           }}
-        />
-        <Tab.Screen 
-          name="Browse" 
-          component={BrowseScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="compass-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tab.Screen 
-          name="Following" 
-          component={FollowingScreen}
-          options={{
-            tabBarIcon: ({ focused, size }) => (
-              <Ionicons 
-                name="heart" 
-                color={focused ? TAB_COLORS.following : '#999999'} 
-                size={size} 
-              />
-            ),
-            tabBarActiveTintColor: TAB_COLORS.following,
-          }}
-        />
-        <Tab.Screen 
-          name="Profile" 
-          component={ProfileScreen}
-          initialParams={{ signOut }}
-          options={{
-            tabBarIcon: ({ focused, size }) => (
-              <Ionicons 
-                name="person" 
-                color={focused ? TAB_COLORS.profile : '#999999'} 
-                size={size} 
-              />
-            ),
-            tabBarActiveTintColor: TAB_COLORS.profile,
-          }}
-        />
-        <Tab.Screen 
-          name="GoLive" 
-          component={GoLiveScreen}
-          options={{
-            tabBarIcon: ({ color }) => (
-              <MaterialCommunityIcons name="record-circle-outline" size={24} color={color} />
-            ),
-            tabBarLabel: 'Go Live',
-          }}
-        />
-      </Tab.Navigator>
-    </NavigationContainer>
+        >
+          <Tab.Screen 
+            name="Home" 
+            component={HomeScreen}
+            options={{
+              tabBarIcon: ({ focused, size }) => (
+                <Ionicons 
+                  name="home" 
+                  color={focused ? TAB_COLORS.home : '#999999'} 
+                  size={size} 
+                />
+              ),
+              tabBarActiveTintColor: TAB_COLORS.home,
+            }}
+          />
+          <Tab.Screen 
+            name="Browse" 
+            component={BrowseScreen}
+            options={{
+              tabBarIcon: ({ color, size }) => (
+                <Ionicons name="compass-outline" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen 
+            name="Following" 
+            component={FollowingScreen}
+            options={{
+              tabBarIcon: ({ focused, size }) => (
+                <Ionicons 
+                  name="heart" 
+                  color={focused ? TAB_COLORS.following : '#999999'} 
+                  size={size} 
+                />
+              ),
+              tabBarActiveTintColor: TAB_COLORS.following,
+            }}
+          />
+          <Tab.Screen 
+            name="Profile" 
+            component={ProfileScreen}
+            options={{
+              tabBarIcon: ({ focused, size }) => (
+                <Ionicons 
+                  name="person" 
+                  color={focused ? TAB_COLORS.profile : '#999999'} 
+                  size={size} 
+                />
+              ),
+              tabBarActiveTintColor: TAB_COLORS.profile,
+            }}
+          />
+          <Tab.Screen 
+            name="GoLive" 
+            component={GoLiveScreen}
+            options={{
+              tabBarIcon: ({ color }) => (
+                <MaterialCommunityIcons name="record-circle-outline" size={24} color={color} />
+              ),
+              tabBarLabel: 'Go Live',
+            }}
+          />
+          <Tab.Screen 
+            name="TestChat" 
+            component={TestChatScreen}
+            options={{
+              tabBarIcon: ({ color, size }) => (
+                <Ionicons name="chatbubbles-outline" size={size} color={color} />
+              ),
+            }}
+          />
+        </Tab.Navigator>
+      </NavigationContainer>
+    </ChatProvider>
   );
-};
+}
 
 const styles = StyleSheet.create({
   tabBar: {

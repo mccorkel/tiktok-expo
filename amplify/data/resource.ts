@@ -12,7 +12,18 @@ const schema = a.schema({
       content: a.string(),
       isDone: a.boolean()
     })
-    .authorization(allow => [allow.owner()])
+    .authorization(allow => [allow.owner()]),
+  ChatRoom: a.model({
+    userId: a.string(),
+    roomArn: a.string(),
+    createdAt: a.datetime(),
+    isActive: a.boolean(),
+    displayName: a.string(),
+    lastMessageAt: a.string(),
+  }).authorization(allow => [
+    allow.owner(),
+    allow.authenticated().to(['read'])
+  ]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
