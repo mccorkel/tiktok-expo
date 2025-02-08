@@ -23,8 +23,10 @@ backend.auth.resources.authenticatedUserIamRole.addToPrincipalPolicy(
       'ivs:ListChannels',
       'ivs:StartStream',
       'ivs:StopStream',
+      'ivs:CreateStreamKey',
       'ivs:GetStreamKey',
       'ivs:ListStreamKeys',
+      'ivs:TagResource',
       // Chat permissions
       'ivschat:CreateRoom',
       'ivschat:DeleteRoom',

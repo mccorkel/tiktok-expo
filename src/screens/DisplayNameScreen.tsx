@@ -31,7 +31,7 @@ export default function DisplayNameScreen({ onComplete }: { onComplete: () => vo
 
     // Check uniqueness
     try {
-      const profiles = await client.models.Profile.list({
+      const { data: profiles } = await client.models.Profile.list({
         filter: {
           displayName: { eq: name }
         }
@@ -62,6 +62,9 @@ export default function DisplayNameScreen({ onComplete }: { onComplete: () => vo
       }
 
       const user = await getCurrentUser();
+      if (!user.userId) {
+        throw new Error('User ID is required');
+      }
       
       // Create profile
       await client.models.Profile.create({

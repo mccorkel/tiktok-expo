@@ -13,6 +13,8 @@
     "@api.video/react-native-livestream": "^2.0.2",
     "@aws-amplify/react-native": "^1.1.6",
     "@aws-amplify/ui-react-native": "^2.4.1",
+    "@aws-sdk/client-ivs": "^3.744.0",
+    "@aws-sdk/client-ivs-realtime": "^3.744.0",
     "@aws-sdk/client-ivschat": "^3.743.0",
     "@craftzdog/react-native-buffer": "^6.0.5",
     "@expo/vector-icons": "^14.0.4",

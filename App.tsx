@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ChatProvider, useChat } from './src/providers/ChatProvider';
 import { getCurrentUser } from 'aws-amplify/auth';
-import { generateClient } from 'aws-amplify/data';
+import { generateClient } from 'aws-amplify/api';
 import type { Schema } from './amplify/data/resource';
 
 // Import screens
@@ -24,6 +24,7 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import GoLiveScreen from './src/screens/GoLiveScreen';
 import TestChatScreen from './src/screens/TestChatScreen';
 import DisplayNameScreen from './src/screens/DisplayNameScreen';
+import ChannelTestScreen from './src/screens/ChannelTestScreen';
 
 import outputs from "./amplify_outputs.json";
 
@@ -36,6 +37,7 @@ type RootTabParamList = {
   Profile: undefined;
   GoLive: undefined;
   TestChat: undefined;
+  ChannelTest: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -187,6 +189,16 @@ function App() {
               tabBarIcon: ({ color, size }) => (
                 <Ionicons name="chatbubbles-outline" size={size} color={color} />
               ),
+            }}
+          />
+          <Tab.Screen 
+            name="ChannelTest" 
+            component={ChannelTestScreen}
+            options={{
+              tabBarIcon: ({ color, size }) => (
+                <MaterialCommunityIcons name="video-check" size={size} color={color} />
+              ),
+              tabBarLabel: 'Channel Test',
             }}
           />
         </Tab.Navigator>
