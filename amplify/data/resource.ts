@@ -13,20 +13,20 @@ const schema = a.schema({
       isDone: a.boolean()
     })
     .authorization(allow => [allow.owner()]),
-  ChatRoom: a.model({
-    userId: a.string(),
-    roomArn: a.string(),
-    createdAt: a.datetime(),
-    isActive: a.boolean(),
-    displayName: a.string(),
-    lastMessageAt: a.string(),
-  }).authorization(allow => [
-    allow.owner(),
-    allow.authenticated().to(['read'])
-  ]),
-});
 
-export type Schema = ClientSchema<typeof schema>;
+  Profile: a
+    .model({
+      userId: a.string(),
+      displayName: a.string(),
+      bio: a.string(),
+      avatarUrl: a.string(),
+      followers: a.integer(),
+      following: a.integer()
+    })
+    .authorization(allow => [allow.owner()]),
+
+  // Removed ChatRoom model since we're using IVS stack's chat room
+});
 
 export const data = defineData({
   schema,
@@ -34,6 +34,8 @@ export const data = defineData({
     defaultAuthorizationMode: 'userPool'
   }
 });
+
+export type Schema = ClientSchema<typeof schema>;
 
 /*== STEP 2 ===============================================================
 Go to your frontend source code. From your client-side code, generate a

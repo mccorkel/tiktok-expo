@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "fetch-ivs": "ts-node scripts/fetch-ivs-config.ts"
   },
   "dependencies": {
     "@api.video/react-native-livestream": "^2.0.2",
@@ -45,7 +46,8 @@
     "react-native-websocket": "^1.0.2",
     "react-native-webview": "13.12.5",
     "stream-browserify": "^3.0.0",
-    "web-streams-polyfill": "^4.1.0"
+    "web-streams-polyfill": "^4.1.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@aws-amplify/backend": "^1.14.0",
@@ -61,6 +63,7 @@
     "babel-plugin-module-resolver": "^5.0.2",
     "constructs": "^10.4.2",
     "esbuild": "^0.24.2",
+    "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   },

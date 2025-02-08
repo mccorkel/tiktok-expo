@@ -7,26 +7,36 @@ import {
   TouchableOpacity,
   TextInput,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Button
 } from 'react-native';
 import { useChat } from '../providers/ChatProvider';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { Ionicons } from '@expo/vector-icons';
+import { ivsConfig } from '../config/ivs';
 
-export default function ChatView({ 
-  channel, 
-  onBack 
-}: { 
-  channel: { displayName: string; roomArn: string; }; 
+type ChatViewProps = {
+  channel: {
+    roomArn: string;
+    displayName: string;
+  };
   onBack: () => void;
-}) {
-  const { messages, joinRoom, sendMessage } = useChat();
-  const [messageText, setMessageText] = useState('');
+};
+
+export default function ChatView({ channel, onBack }: ChatViewProps) {
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const { joinRoom, sendMessage, messages, isConnected } = useChat();
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
+    console.log('Connecting to channel:', {
+      channelArn: ivsConfig.channelArn,
+      chatRoomArn: ivsConfig.chatRoomArn,
+      playbackUrl: ivsConfig.playbackUrl
+    });
     connectToChannel();
-  }, [channel]);
+  }, [channel.roomArn]);
 
   const connectToChannel = async () => {
     try {
@@ -37,17 +47,24 @@ export default function ChatView({
       });
     } catch (error) {
       console.error('Failed to connect to channel:', error);
+      setError('Failed to connect to chat');
     }
   };
 
   const handleSend = async () => {
-    if (!messageText.trim()) return;
-    
+    if (!isConnected) {
+      setError('Not connected to chat. Trying to reconnect...');
+      await connectToChannel();
+      return;
+    }
+
     try {
-      await sendMessage(messageText.trim());
-      setMessageText('');
+      await sendMessage(message);
+      setMessage('');
+      setError(null);
     } catch (error) {
       console.error('Failed to send message:', error);
+      setError('Failed to send message');
     }
   };
 
@@ -61,6 +78,9 @@ export default function ChatView({
           <Ionicons name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
         <Text style={styles.channelName}>{channel.displayName}</Text>
+        <Text style={[styles.status, { color: isConnected ? 'green' : 'red' }]}>
+          {isConnected ? 'Connected' : 'Disconnected'}
+        </Text>
       </View>
       
       <ScrollView 
@@ -68,34 +88,28 @@ export default function ChatView({
         style={styles.messages}
         onContentSizeChange={() => scrollViewRef.current?.scrollToEnd()}
       >
-        {messages.map(msg => (
+        {messages.map((msg) => (
           <View key={msg.id} style={styles.message}>
-            <Text style={styles.sender}>{msg.senderId}</Text>
+            <Text style={styles.sender}>{msg.attributes.senderId}:</Text>
             <Text style={styles.content}>{msg.content}</Text>
           </View>
         ))}
       </ScrollView>
 
+      {error && <Text style={styles.error}>{error}</Text>}
+
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          value={messageText}
-          onChangeText={setMessageText}
+          value={message}
+          onChangeText={setMessage}
           placeholder="Type a message..."
-          multiline
-          maxLength={500}
         />
-        <TouchableOpacity 
-          style={styles.sendButton} 
+        <Button 
+          title="Send" 
           onPress={handleSend}
-          disabled={!messageText.trim()}
-        >
-          <Ionicons 
-            name="send" 
-            size={24} 
-            color={messageText.trim() ? '#007AFF' : '#999'} 
-          />
-        </TouchableOpacity>
+          disabled={!isConnected || !message.trim()}
+        />
       </View>
     </KeyboardAvoidingView>
   );
@@ -150,9 +164,12 @@ const styles = StyleSheet.create({
     marginRight: 10,
     maxHeight: 100,
   },
-  sendButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 44,
+  error: {
+    color: 'red',
+    marginBottom: 10,
   },
+  status: {
+    marginLeft: 'auto',
+    fontWeight: 'bold',
+  }
 }); 

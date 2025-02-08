@@ -1,16 +1,32 @@
 {
-    "build": {
-      "production": {
-        "ios": {
-          "distribution": "store",
-          "buildConfiguration": "Release"
-        }
+  "cli": {
+    "version": ">= 5.9.1"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "ios": {
+        "resourceClass": "m-medium"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "your-apple-id@example.com",
+        "ascAppId": "your-app-store-connect-app-id",
+        "appleTeamId": "your-team-id"
       },
-      "preview": {
-        "ios": {
-          "distribution": "internal",
-          "buildConfiguration": "Debug"
-        }
+      "android": {
+        "serviceAccountKeyPath": "./path-to-your-google-service-account.json",
+        "track": "production"
       }
     }
   }
+}

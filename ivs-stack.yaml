@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'IVS Stack with Channel and Chat Room'
+
+Resources:
+  IVSServiceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 'ivs.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: IVSAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ivs:*'
+                Resource: '*'
+
+  IVSChannel:
+    Type: 'AWS::IVS::Channel'
+    DependsOn: IVSServiceRole
+    Properties:
+      Name: 'default-channel'
+      Type: 'BASIC'
+      Authorized: false
+
+  IVSChatServiceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 'ivschat.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: IVSChatAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ivschat:*'
+                Resource: '*'
+
+  IVSChatRoom:
+    Type: 'AWS::IVSChat::Room'
+    DependsOn: IVSChatServiceRole
+    Properties:
+      Name: 'default-chat-room'
+      MaximumMessageLength: 500
+      MaximumMessageRatePerSecond: 5
+
+Outputs:
+  ChannelArn:
+    Description: 'ARN of the IVS Channel'
+    Value: !Ref IVSChannel
+    Export:
+      Name: !Sub '${AWS::StackName}-ChannelArn'
+
+  ChatRoomArn:
+    Description: 'ARN of the IVS Chat Room'
+    Value: !Ref IVSChatRoom
+    Export:
+      Name: !Sub '${AWS::StackName}-ChatRoomArn'
+
+  PlaybackUrl:
+    Description: 'Playback URL for the channel'
+    Value: !GetAtt IVSChannel.PlaybackUrl
+    Export:
+      Name: !Sub '${AWS::StackName}-PlaybackUrl'
+
+  IngestEndpoint:
+    Description: 'Ingest endpoint for the channel'
+    Value: !GetAtt IVSChannel.IngestEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-IngestEndpoint'
+
+  WebSocketEndpoint:
+    Description: 'WebSocket endpoint for chat'
+    Value: !Sub 'wss://edge.ivschat.${AWS::Region}.amazonaws.com'
+    Export:
+      Name: !Sub '${AWS::StackName}-WebSocketEndpoint' 
