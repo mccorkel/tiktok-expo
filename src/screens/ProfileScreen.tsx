@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { getCurrentUser, signOut } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/api';
 import type { Schema } from '../../amplify/data/resource';
 import AuthenticatedLayout from '../layouts/AuthenticatedLayout';
+import { IVSService } from '../services/IVSService';
 
 const client = generateClient<Schema>();
+const ivsService = new IVSService();
 
 type Profile = Schema['Profile']['type'];
 
@@ -15,9 +17,47 @@ export default function ProfileScreen() {
   const [error, setError] = useState<string | null>(null);
   const [showStreamKey, setShowStreamKey] = useState(false);
 
+  const checkLiveStatus = useCallback(async () => {
+    if (!profile?.channelArn) return;
+
+    try {
+      const isLive = await ivsService.checkChannelLiveStatus(profile.channelArn);
+      console.log('Current live status:', profile.isLive, 'New live status:', isLive);
+      
+      if (isLive !== profile.isLive) {
+        console.log('Updating live status in database...');
+        const { data: updatedProfile } = await client.models.Profile.update({
+          id: profile.id,
+          isLive,
+          lastStreamedAt: isLive ? new Date().toISOString() : profile.lastStreamedAt
+        });
+
+        console.log('Profile updated:', updatedProfile);
+        if (updatedProfile) {
+          setProfile(updatedProfile);
+        }
+      }
+    } catch (err) {
+      console.error('Error checking live status:', err);
+    }
+  }, [profile?.channelArn, profile?.isLive, profile?.id]);
+
   useEffect(() => {
     loadProfile();
   }, []);
+
+  // Set up polling for live status
+  useEffect(() => {
+    if (!profile?.channelArn) return;
+
+    // Check immediately
+    checkLiveStatus();
+
+    // Then check every 10 seconds
+    const interval = setInterval(checkLiveStatus, 10000);
+
+    return () => clearInterval(interval);
+  }, [profile?.channelArn, checkLiveStatus]);
 
   const loadProfile = async () => {
     try {

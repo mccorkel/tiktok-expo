@@ -1,4 +1,4 @@
-import { IvsClient, CreateChannelCommand, CreateStreamKeyCommand, GetStreamKeyCommand, ListStreamKeysCommand, DeleteStreamKeyCommand, CreateChannelCommandOutput, GetChannelCommand } from '@aws-sdk/client-ivs';
+import { IvsClient, CreateChannelCommand, CreateStreamKeyCommand, GetStreamKeyCommand, ListStreamKeysCommand, DeleteStreamKeyCommand, CreateChannelCommandOutput, GetChannelCommand, GetChannelCommandOutput, GetStreamCommand } from '@aws-sdk/client-ivs';
 import { IvschatClient, CreateRoomCommand, CreateRoomCommandOutput } from '@aws-sdk/client-ivschat';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import outputs from '../../amplify_outputs.json';
@@ -11,6 +11,7 @@ export interface Channel {
   name: string;
   playbackUrl: string;
   ingestEndpoint: string;
+  isLive?: boolean;
 }
 
 export interface StreamKey {
@@ -23,6 +24,14 @@ export interface ChatRoom {
   arn: string;
   name: string;
   id: string;
+}
+
+interface IVSChannelResponse {
+  arn: string;
+  name?: string;
+  playbackUrl: string;
+  ingestEndpoint: string;
+  health?: string;
 }
 
 export class IVSService {
@@ -93,25 +102,66 @@ export class IVSService {
     try {
       const ivsClient = await this.getIVSClient();
       
-      const command = new GetChannelCommand({
+      // Get channel info
+      const channelCommand = new GetChannelCommand({
         arn: channelArn
       });
 
-      const response = await ivsClient.send(command);
+      const channelResponse = await ivsClient.send(channelCommand);
+      console.log('Raw Channel Response:', JSON.stringify(channelResponse, null, 2));
       
-      if (!response.channel?.arn || !response.channel?.playbackUrl || !response.channel?.ingestEndpoint) {
+      if (!channelResponse.channel?.arn || !channelResponse.channel?.playbackUrl || !channelResponse.channel?.ingestEndpoint) {
         throw new Error('Invalid channel response');
       }
 
+      // Get stream info
+      const streamCommand = new GetStreamCommand({
+        channelArn
+      });
+
+      let isLive = false;
+      try {
+        const streamResponse = await ivsClient.send(streamCommand);
+        console.log('Stream Response:', JSON.stringify(streamResponse, null, 2));
+        isLive = Boolean(streamResponse.stream);
+      } catch (streamError: any) {
+        // Handle expected error cases
+        if (streamError.name === 'NotFoundException' || streamError.name === 'ChannelNotBroadcasting') {
+          console.log('Channel is offline:', channelArn);
+          isLive = false;
+        } else {
+          // Only throw for unexpected errors
+          console.error('Unexpected error checking stream status:', streamError);
+          throw streamError;
+        }
+      }
+
       return {
-        arn: response.channel.arn,
-        name: response.channel.name || '',
-        playbackUrl: response.channel.playbackUrl,
-        ingestEndpoint: response.channel.ingestEndpoint
+        arn: channelResponse.channel.arn,
+        name: channelResponse.channel.name || '',
+        playbackUrl: channelResponse.channel.playbackUrl,
+        ingestEndpoint: channelResponse.channel.ingestEndpoint,
+        isLive
       };
     } catch (error) {
       console.error('Error getting channel:', error);
       throw error;
+    }
+  }
+
+  async checkChannelLiveStatus(channelArn: string): Promise<boolean> {
+    try {
+      const channel = await this.getChannel(channelArn);
+      const currentStatus = channel.isLive || false;
+      console.log('Channel live status check:', {
+        channelArn,
+        isLive: currentStatus
+      });
+      return currentStatus;
+    } catch (error) {
+      // Log the error but don't throw, just return offline status
+      console.log('Error checking live status, assuming channel is offline:', error);
+      return false;
     }
   }
 
