@@ -208,8 +208,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         capabilities: ["SEND_MESSAGE"],
         attributes: {
           "displayName": user.username,
-        },
-        sessionExpirationTime: new Date(Date.now() + 60 * 60 * 1000),
+        }
       });
       
       if (!response.token) throw new Error('No token received');
