@@ -5,8 +5,12 @@ import {
   ApiVideoLiveStreamProps 
 } from '@api.video/react-native-livestream';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { STREAM_KEY, RTMP_URL } from '@env';
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
+import { getCurrentUser } from 'aws-amplify/auth';
+import { generateClient } from 'aws-amplify/api';
+import type { Schema } from '../../amplify/data/resource';
+
+const client = generateClient<Schema>();
 
 interface ApiVideoLiveStreamMethods {
   startStreaming: (streamKey: string, url?: string) => Promise<boolean>;
@@ -19,6 +23,28 @@ export default function GoLiveScreen() {
   const [streaming, setStreaming] = useState(false);
   const [audioMuted, setAudioMuted] = useState(false);
   const [camera, setCamera] = useState<'front' | 'back'>('back');
+  const [profile, setProfile] = useState<Schema['Profile']['type'] | null>(null);
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      const user = await getCurrentUser();
+      const { data: profiles } = await client.models.Profile.list({
+        filter: {
+          userId: { eq: user.userId }
+        }
+      });
+
+      if (profiles.length > 0) {
+        setProfile(profiles[0]);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    }
+  };
 
   useEffect(() => {
     async function configureAudio() {
@@ -49,6 +75,11 @@ export default function GoLiveScreen() {
   }, [streaming]);
 
   const handleStreaming = async () => {
+    if (!profile?.streamKeyValue || !profile?.ingestEndpoint) {
+      console.error('Missing stream configuration');
+      return;
+    }
+
     if (streaming) {
       try {
         await ref.current?.stopStreaming();
@@ -59,8 +90,12 @@ export default function GoLiveScreen() {
       }
     } else {
       try {
-        console.log('Attempting to start stream with:', { STREAM_KEY, RTMP_URL });
-        const success = await ref.current?.startStreaming(STREAM_KEY, RTMP_URL);
+        const rtmpUrl = `rtmps://${profile.ingestEndpoint}:443/app`;
+        console.log('Attempting to start stream with:', { 
+          streamKey: profile.streamKeyValue,
+          rtmpUrl
+        });
+        const success = await ref.current?.startStreaming(profile.streamKeyValue, rtmpUrl);
         if (success) {
           console.log('Stream started successfully');
           setStreaming(true);
