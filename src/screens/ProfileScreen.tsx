@@ -188,7 +188,7 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.label}>Server (paste into OBS "Server" field):</Text>
-            <Text style={styles.code}>rtmps://{profile.ingestEndpoint}</Text>
+            <Text style={styles.code}>rtmps://{profile.ingestEndpoint}:443/app</Text>
           </View>
         </View>
 
