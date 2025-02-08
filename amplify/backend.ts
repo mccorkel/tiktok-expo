@@ -34,7 +34,8 @@ backend.auth.resources.authenticatedUserIamRole.addToPrincipalPolicy(
       'ivschat:GetRoom',
       'ivschat:ListRooms',
       'ivschat:SendMessage',
-      'ivschat:CreateChatToken'
+      'ivschat:CreateChatToken',
+      'ivschat:TagResource'
     ],
     resources: ['*'],
   })

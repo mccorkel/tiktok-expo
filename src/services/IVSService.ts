@@ -1,48 +1,62 @@
-import { 
-  IvsClient, 
-  CreateChannelCommand,
-  GetChannelCommand,
-  CreateStreamKeyCommand,
-  GetStreamKeyCommand,
-  ListStreamKeysCommand,
-  DeleteStreamKeyCommand,
-  StreamKey as IVSStreamKey
-} from "@aws-sdk/client-ivs";
+import { IvsClient, CreateChannelCommand, CreateStreamKeyCommand, GetStreamKeyCommand, ListStreamKeysCommand, DeleteStreamKeyCommand, CreateChannelCommandOutput, GetChannelCommand } from '@aws-sdk/client-ivs';
+import { IvschatClient, CreateRoomCommand, CreateRoomCommandOutput } from '@aws-sdk/client-ivschat';
 import { fetchAuthSession } from 'aws-amplify/auth';
+import outputs from '../../amplify_outputs.json';
 
-interface StreamKey {
-  arn: string;
-  value: string;  // The actual stream key to use with broadcasting software
-  channelArn: string;
-}
+const AWS_REGION = 'us-east-1';
+const IDENTITY_POOL_ID = outputs.auth.identity_pool_id;
 
-interface Channel {
+export interface Channel {
   arn: string;
   name: string;
   playbackUrl: string;
   ingestEndpoint: string;
 }
 
+export interface StreamKey {
+  arn: string;
+  value: string;
+  channelArn: string;
+}
+
+export interface ChatRoom {
+  arn: string;
+  name: string;
+  id: string;
+}
+
 export class IVSService {
   private ivsClient: IvsClient | null = null;
+  private ivsChatClient: IvschatClient | null = null;
 
   private async getIVSClient(): Promise<IvsClient> {
     if (!this.ivsClient) {
-      const session = await fetchAuthSession();
-      if (!session.credentials) {
+      const { credentials } = await fetchAuthSession();
+      if (!credentials) {
         throw new Error('No credentials available');
       }
-      
-      this.ivsClient = new IvsClient({ 
-        region: "us-east-1",  // Change this to your region
-        credentials: {
-          accessKeyId: session.credentials.accessKeyId,
-          secretAccessKey: session.credentials.secretAccessKey,
-          sessionToken: session.credentials.sessionToken
-        }
+
+      this.ivsClient = new IvsClient({
+        region: AWS_REGION,
+        credentials
       });
     }
     return this.ivsClient;
+  }
+
+  private async getIVSChatClient(): Promise<IvschatClient> {
+    if (!this.ivsChatClient) {
+      const { credentials } = await fetchAuthSession();
+      if (!credentials) {
+        throw new Error('No credentials available');
+      }
+
+      this.ivsChatClient = new IvschatClient({
+        region: AWS_REGION,
+        credentials
+      });
+    }
+    return this.ivsChatClient;
   }
 
   async createChannel(name: string, tags?: Record<string, string>): Promise<Channel> {
@@ -52,12 +66,12 @@ export class IVSService {
       const command = new CreateChannelCommand({
         name,
         tags,
-        type: 'BASIC',  // or 'STANDARD' for higher quality
-        latencyMode: 'LOW',  // or 'NORMAL'
-        authorized: false,  // Set to true if you want to restrict who can stream
+        type: 'BASIC',
+        latencyMode: 'LOW',
+        authorized: false
       });
 
-      const response = await ivsClient.send(command);
+      const response = await ivsClient.send(command) as CreateChannelCommandOutput;
       
       if (!response.channel?.arn || !response.channel?.playbackUrl || !response.channel?.ingestEndpoint) {
         throw new Error('Invalid channel creation response');
@@ -207,6 +221,32 @@ export class IVSService {
       await ivsClient.send(command);
     } catch (error) {
       console.error('Error deleting stream key:', error);
+      throw error;
+    }
+  }
+
+  async createChatRoom(name: string, tags?: Record<string, string>): Promise<ChatRoom> {
+    try {
+      const ivsChatClient = await this.getIVSChatClient();
+      
+      const command = new CreateRoomCommand({
+        name,
+        tags
+      });
+
+      const response = await ivsChatClient.send(command) as CreateRoomCommandOutput;
+      
+      if (!response.arn || !response.id) {
+        throw new Error('Invalid chat room creation response');
+      }
+
+      return {
+        arn: response.arn,
+        name: name, // CreateRoomCommand response doesn't include name
+        id: response.id
+      };
+    } catch (error) {
+      console.error('Error creating chat room:', error);
       throw error;
     }
   }

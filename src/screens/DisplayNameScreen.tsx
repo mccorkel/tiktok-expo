@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TextInput, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
-import { generateClient } from 'aws-amplify/data';
+import { generateClient } from 'aws-amplify/api';
 import { getCurrentUser } from 'aws-amplify/auth';
 import type { Schema } from '../../amplify/data/resource';
 import UnauthenticatedLayout from '../layouts/UnauthenticatedLayout';
+import { ProfileService } from '../services/ProfileService';
 
 const client = generateClient<Schema>();
+const profileService = new ProfileService();
 
 // Regex for validating display name (alphanumeric, dash, underscore)
 const DISPLAY_NAME_REGEX = /^[a-zA-Z0-9_-]+$/;
@@ -51,35 +53,23 @@ export default function DisplayNameScreen({ onComplete }: { onComplete: () => vo
   };
 
   const handleSubmit = async () => {
-    setError(null);
-    setIsLoading(true);
-
     try {
+      setIsLoading(true);
+      setError(null);
+
+      // Validate display name
       const isValid = await validateDisplayName(displayName);
       if (!isValid) {
         setIsLoading(false);
         return;
       }
 
-      const user = await getCurrentUser();
-      if (!user.userId) {
-        throw new Error('User ID is required');
-      }
-      
-      // Create profile
-      await client.models.Profile.create({
-        userId: user.userId,
-        displayName,
-        bio: '',
-        avatarUrl: '',
-        followers: 0,
-        following: 0
-      });
-
+      // Create profile with IVS resources
+      await profileService.createProfile(displayName);
       onComplete();
     } catch (err) {
       console.error('Error creating profile:', err);
-      setError('Error creating profile. Please try again.');
+      setError('Failed to create profile. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -88,30 +78,27 @@ export default function DisplayNameScreen({ onComplete }: { onComplete: () => vo
   return (
     <UnauthenticatedLayout>
       <View style={styles.container}>
-        <Text style={styles.title}>Choose your display name</Text>
-        <Text style={styles.subtitle}>
-          This is how other users will see you. You can change this later.
-        </Text>
+        <Text style={styles.title}>Choose Your Display Name</Text>
+        <Text style={styles.subtitle}>This will be your unique identifier in the app</Text>
         
         <TextInput
           style={styles.input}
           value={displayName}
-          onChangeText={(text) => {
-            setDisplayName(text);
-            setError(null);
-          }}
+          onChangeText={setDisplayName}
           placeholder="Enter display name"
           autoCapitalize="none"
           autoCorrect={false}
           editable={!isLoading}
         />
         
-        {error && <Text style={styles.error}>{error}</Text>}
+        {error && (
+          <Text style={styles.error}>{error}</Text>
+        )}
         
         <TouchableOpacity
           style={[styles.button, isLoading && styles.buttonDisabled]}
           onPress={handleSubmit}
-          disabled={isLoading || displayName.length < MIN_LENGTH}
+          disabled={isLoading}
         >
           {isLoading ? (
             <ActivityIndicator color="#fff" />
@@ -128,6 +115,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+    backgroundColor: '#fff',
+    alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
@@ -143,23 +132,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   input: {
+    width: '100%',
+    height: 50,
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
-    padding: 15,
+    paddingHorizontal: 15,
     fontSize: 16,
-    marginBottom: 10,
-  },
-  error: {
-    color: '#ff3b30',
-    marginBottom: 10,
+    marginBottom: 20,
   },
   button: {
+    width: '100%',
+    height: 50,
     backgroundColor: '#007AFF',
-    padding: 15,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 20,
+    justifyContent: 'center',
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -168,5 +156,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  error: {
+    color: '#FF3B30',
+    marginBottom: 20,
+    textAlign: 'center',
   },
 }); 

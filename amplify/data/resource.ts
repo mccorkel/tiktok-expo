@@ -21,7 +21,15 @@ const schema = a.schema({
       bio: a.string(),
       avatarUrl: a.string(),
       followers: a.integer(),
-      following: a.integer()
+      following: a.integer(),
+      channelArn: a.string(),
+      streamKeyArn: a.string(),
+      streamKeyValue: a.string(),
+      chatRoomArn: a.string(),
+      ingestEndpoint: a.string(),
+      playbackUrl: a.string(),
+      isLive: a.boolean(),
+      lastStreamedAt: a.string()
     })
     .authorization(allow => [allow.owner()]),
 
