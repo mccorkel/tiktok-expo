@@ -3,8 +3,8 @@
 // setupPolyfills();
 
 import './src/utils/stream-polyfill';
-import React, { useEffect } from "react";
-import { StyleSheet } from "react-native";
+import React, { useEffect, useState } from "react";
+import { StyleSheet, View, ActivityIndicator } from "react-native";
 import { Amplify } from "aws-amplify";
 import { withAuthenticator } from "@aws-amplify/ui-react-native";
 import { NavigationContainer } from '@react-navigation/native';
@@ -13,6 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ChatProvider, useChat } from './src/providers/ChatProvider';
 import { getCurrentUser } from 'aws-amplify/auth';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from './amplify/data/resource';
 
 // Import screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -21,6 +23,7 @@ import FollowingScreen from './src/screens/FollowingScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import GoLiveScreen from './src/screens/GoLiveScreen';
 import TestChatScreen from './src/screens/TestChatScreen';
+import DisplayNameScreen from './src/screens/DisplayNameScreen';
 
 import outputs from "./amplify_outputs.json";
 
@@ -67,6 +70,43 @@ function ChannelSetup() {
 }
 
 function App() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [needsProfile, setNeedsProfile] = useState(false);
+  const client = generateClient<Schema>();
+
+  useEffect(() => {
+    checkUserProfile();
+  }, []);
+
+  const checkUserProfile = async () => {
+    try {
+      const user = await getCurrentUser();
+      const { data: profiles } = await client.models.Profile.list({
+        filter: {
+          userId: { eq: user.userId }
+        }
+      });
+
+      setNeedsProfile(profiles.length === 0);
+      setIsLoading(false);
+    } catch (err) {
+      console.error('Error checking user profile:', err);
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
+  if (needsProfile) {
+    return <DisplayNameScreen onComplete={() => setNeedsProfile(false)} />;
+  }
+
   return (
     <ChatProvider>
       <ChannelSetup />
@@ -167,6 +207,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     height: 60,
     paddingBottom: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
   },
 });
 

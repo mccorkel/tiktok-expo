@@ -87,7 +87,10 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const chatRoom = new ChatRoom({
         regionOrUrl: 'us-east-1',
-        tokenProvider: () => tokenProvider(user)
+        tokenProvider: () => tokenProvider({
+          id: user.id,
+          username: user.username === 'Anonymous' ? `Guest${user.id.slice(-5)}` : user.username
+        })
       });
 
       chatRoom.addListener('connecting', () => console.log('Connecting...'));
@@ -120,13 +123,27 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
       const user = await getCurrentUser();
+      if (!user.userId) {
+        throw new Error('User ID is required');
+      }
+      
+      // Fetch user's profile to get display name
+      const { data: profiles } = await client.models.Profile.list({
+        filter: {
+          userId: { eq: user.userId }
+        }
+      });
+
+      const guestId = `Guest${user.userId.slice(-5)}`;
+      const displayName = profiles.length > 0 ? profiles[0].displayName : guestId;
+
       await room.sendMessage({
         action: 'SEND_MESSAGE',
         content,
         requestId: Date.now().toString(),
         attributes: {
           senderId: user.userId,
-          displayName: user.signInDetails?.loginId || 'Anonymous',
+          displayName,
           clientTimestamp: Date.now().toString()
         }
       });

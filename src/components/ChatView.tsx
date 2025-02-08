@@ -41,9 +41,12 @@ export default function ChatView({ channel, onBack }: ChatViewProps) {
   const connectToChannel = async () => {
     try {
       const user = await getCurrentUser();
+      if (!user.userId) {
+        throw new Error('User ID is required');
+      }
       await joinRoom(channel.roomArn, {
         id: user.userId,
-        username: user.signInDetails?.loginId || 'Anonymous'
+        username: `Guest${user.userId.slice(-5)}`
       });
     } catch (error) {
       console.error('Failed to connect to channel:', error);
@@ -90,7 +93,14 @@ export default function ChatView({ channel, onBack }: ChatViewProps) {
       >
         {messages.map((msg) => (
           <View key={msg.id} style={styles.message}>
-            <Text style={styles.sender}>{msg.attributes.senderId}:</Text>
+            <Text style={styles.sender}>
+              {msg.attributes.displayName || 
+                (msg.attributes.senderId ? 
+                  `Guest${msg.attributes.senderId.slice(-5)}` : 
+                  'Guest'
+                )
+              }:
+            </Text>
             <Text style={styles.content}>{msg.content}</Text>
           </View>
         ))}
