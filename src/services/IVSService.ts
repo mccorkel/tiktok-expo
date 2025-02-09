@@ -1,10 +1,11 @@
-import { IvsClient, CreateChannelCommand, CreateStreamKeyCommand, GetStreamKeyCommand, ListStreamKeysCommand, DeleteStreamKeyCommand, CreateChannelCommandOutput, GetChannelCommand, GetChannelCommandOutput, GetStreamCommand } from '@aws-sdk/client-ivs';
+import { IvsClient, CreateChannelCommand, CreateStreamKeyCommand, GetStreamKeyCommand, ListStreamKeysCommand, DeleteStreamKeyCommand, CreateChannelCommandOutput, GetChannelCommand, GetChannelCommandOutput, GetStreamCommand, CreateRecordingConfigurationCommand, GetRecordingConfigurationCommand, ListRecordingConfigurationsCommand, ListStreamSessionsCommand, type CreateRecordingConfigurationCommandOutput, type ThumbnailConfigurationStorage, type RecordingMode, type RenditionConfigurationRendition, type ThumbnailConfigurationResolution, type RenditionConfigurationRenditionSelection, type CreateRecordingConfigurationCommandInput } from '@aws-sdk/client-ivs';
 import { IvschatClient, CreateRoomCommand, CreateRoomCommandOutput } from '@aws-sdk/client-ivschat';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import outputs from '../../amplify_outputs.json';
 
 const AWS_REGION = 'us-east-1';
 const IDENTITY_POOL_ID = outputs.auth.identity_pool_id;
+const RECORDING_CONFIGURATION_ARN = 'arn:aws:ivs:us-east-1:525894077320:recording-configuration/8yd1f8ATA0TD';
 
 export interface Channel {
   arn: string;
@@ -12,6 +13,8 @@ export interface Channel {
   playbackUrl: string;
   ingestEndpoint: string;
   isLive?: boolean;
+  recordingConfigurationArn: string;
+  streamSessionId?: string;
 }
 
 export interface StreamKey {
@@ -68,6 +71,33 @@ export class IVSService {
     return this.ivsChatClient;
   }
 
+  async getRecordingConfiguration(arn: string) {
+    try {
+      const ivsClient = await this.getIVSClient();
+      
+      const command = new GetRecordingConfigurationCommand({
+        arn
+      });
+
+      const response = await ivsClient.send(command);
+      console.log('Recording configuration status:', {
+        arn,
+        state: response.recordingConfiguration?.state,
+        destination: response.recordingConfiguration?.destinationConfiguration,
+        thumbnailConfig: response.recordingConfiguration?.thumbnailConfiguration
+      });
+
+      return response.recordingConfiguration;
+    } catch (error) {
+      console.error('Error getting recording configuration:', {
+        error,
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  }
+
   async createChannel(name: string, tags?: Record<string, string>): Promise<Channel> {
     try {
       const ivsClient = await this.getIVSClient();
@@ -77,7 +107,8 @@ export class IVSService {
         tags,
         type: 'BASIC',
         latencyMode: 'LOW',
-        authorized: false
+        authorized: false,
+        recordingConfigurationArn: RECORDING_CONFIGURATION_ARN
       });
 
       const response = await ivsClient.send(command) as CreateChannelCommandOutput;
@@ -90,11 +121,90 @@ export class IVSService {
         arn: response.channel.arn,
         name: response.channel.name || name,
         playbackUrl: response.channel.playbackUrl,
-        ingestEndpoint: response.channel.ingestEndpoint
+        ingestEndpoint: response.channel.ingestEndpoint,
+        recordingConfigurationArn: RECORDING_CONFIGURATION_ARN
       };
     } catch (error) {
       console.error('Error creating channel:', error);
       throw error;
+    }
+  }
+
+  async getActiveRecordingId(channelArn: string): Promise<string | null> {
+    try {
+      console.log('Starting getActiveRecordingId:', {
+        channelArn,
+        timestamp: new Date().toISOString()
+      });
+
+      const ivsClient = await this.getIVSClient();
+      console.log('IVS client initialized');
+      
+      const command = new ListStreamSessionsCommand({
+        channelArn,
+        maxResults: 1
+      });
+      console.log('ListStreamSessionsCommand created:', {
+        params: { channelArn, maxResults: 1 }
+      });
+
+      console.log('Sending ListStreamSessionsCommand...');
+      const response = await ivsClient.send(command);
+      console.log('ListStreamSessions response received:', {
+        hasStreamSessions: Boolean(response.streamSessions),
+        sessionCount: response.streamSessions?.length || 0,
+        nextToken: response.nextToken,
+        raw: JSON.stringify(response, null, 2)
+      });
+      
+      // If there's no active stream session, return null
+      if (!response.streamSessions || response.streamSessions.length === 0) {
+        console.log('No stream sessions found for channel:', {
+          channelArn,
+          reason: !response.streamSessions ? 'streamSessions is undefined' : 'streamSessions array is empty'
+        });
+        return null;
+      }
+
+      // Get the most recent stream session
+      const streamSession = response.streamSessions[0];
+      console.log('Most recent stream session:', {
+        streamId: streamSession.streamId,
+        startTime: streamSession.startTime,
+        endTime: streamSession.endTime,
+        hasErrorEvent: streamSession.hasErrorEvent
+      });
+      
+      // Only return the stream ID if the session is still active (no endTime)
+      if (!streamSession.endTime) {
+        console.log('Found active stream session:', {
+          streamId: streamSession.streamId,
+          startTime: streamSession.startTime,
+          hasErrorEvent: streamSession.hasErrorEvent,
+          isActive: true,
+          reason: 'No endTime present'
+        });
+        return streamSession.streamId || null;
+      }
+
+      console.log('Most recent stream session has ended:', {
+        streamId: streamSession.streamId,
+        startTime: streamSession.startTime,
+        endTime: streamSession.endTime,
+        isActive: false,
+        reason: 'endTime is present'
+      });
+      return null;
+    } catch (error) {
+      console.error('Error getting active recording ID:', {
+        error,
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        channelArn,
+        timestamp: new Date().toISOString(),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      return null;
     }
   }
 
@@ -114,16 +224,30 @@ export class IVSService {
         throw new Error('Invalid channel response');
       }
 
-      // Get stream info
-      const streamCommand = new GetStreamCommand({
-        channelArn
-      });
-
+      // Get stream info and recording ID
       let isLive = false;
+      let streamSessionId: string | undefined;
+
       try {
-        const streamResponse = await ivsClient.send(streamCommand);
-        console.log('Stream Response:', JSON.stringify(streamResponse, null, 2));
-        isLive = Boolean(streamResponse.stream);
+        const streamResponse = await ivsClient.send(new GetStreamCommand({ channelArn }));
+        console.log('Full Stream Response:', {
+          stream: streamResponse.stream,
+          properties: streamResponse.stream ? Object.keys(streamResponse.stream) : [],
+          raw: JSON.stringify(streamResponse, null, 2)
+        });
+        
+        if (streamResponse.stream) {
+          isLive = true;
+          const streamData = streamResponse.stream as any;
+          // Get the stream session ID (for live streaming)
+          streamSessionId = streamData.streamId;
+          
+          console.log('Stream data extracted:', {
+            streamSessionId,
+            streamState: streamData.state,
+            streamHealth: streamData.health
+          });
+        }
       } catch (streamError: any) {
         // Handle expected error cases
         if (streamError.name === 'NotFoundException' || streamError.name === 'ChannelNotBroadcasting') {
@@ -141,7 +265,9 @@ export class IVSService {
         name: channelResponse.channel.name || '',
         playbackUrl: channelResponse.channel.playbackUrl,
         ingestEndpoint: channelResponse.channel.ingestEndpoint,
-        isLive
+        isLive,
+        recordingConfigurationArn: channelResponse.channel.recordingConfigurationArn || '',
+        streamSessionId
       };
     } catch (error) {
       console.error('Error getting channel:', error);
@@ -298,6 +424,56 @@ export class IVSService {
     } catch (error) {
       console.error('Error creating chat room:', error);
       throw error;
+    }
+  }
+
+  async listRecordingConfigurations() {
+    try {
+      const ivsClient = await this.getIVSClient();
+      
+      const command = new ListRecordingConfigurationsCommand({});
+      const response = await ivsClient.send(command);
+
+      console.log('All recording configurations:', 
+        JSON.stringify(response.recordingConfigurations, null, 2)
+      );
+
+      return response.recordingConfigurations;
+    } catch (error) {
+      console.error('Error listing recording configurations:', error);
+      throw error;
+    }
+  }
+
+  async verifyThumbnailConfiguration(channelArn: string) {
+    try {
+      // Get channel details
+      const channel = await this.getChannel(channelArn);
+      console.log('Channel details:', JSON.stringify(channel, null, 2));
+
+      if (!channel.recordingConfigurationArn) {
+        console.log('Channel has no recording configuration');
+        return false;
+      }
+
+      // Get the specific recording configuration
+      const config = await this.getRecordingConfiguration(channel.recordingConfigurationArn);
+      if (!config) {
+        console.log('Could not get recording configuration:', channel.recordingConfigurationArn);
+        return false;
+      }
+
+      console.log('Channel recording configuration:', {
+        arn: config.arn,
+        state: config.state,
+        destination: config.destinationConfiguration,
+        thumbnailConfig: config.thumbnailConfiguration
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error verifying thumbnail configuration:', error);
+      return false;
     }
   }
 } 

@@ -1,13 +1,28 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { getCurrentUser, signOut } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/api';
 import type { Schema } from '../../amplify/data/resource';
-import AuthenticatedLayout from '../layouts/AuthenticatedLayout';
-import { IVSService } from '../services/IVSService';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
+import { MainLayout } from '../components/MainLayout';
 
 const client = generateClient<Schema>();
-const ivsService = new IVSService();
+
+type RootStackParamList = {
+  Home: undefined;
+  Browse: undefined;
+  Following: undefined;
+  Profile: undefined;
+  GoLive: undefined;
+  TestChat: undefined;
+  ChannelTest: undefined;
+  StreamDetails: { streamId: string };
+};
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type ProfileScreenRouteProp = RouteProp<RootStackParamList, 'Profile'>;
 
 type Profile = Schema['Profile']['type'];
 
@@ -16,48 +31,12 @@ export default function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showStreamKey, setShowStreamKey] = useState(false);
-
-  const checkLiveStatus = useCallback(async () => {
-    if (!profile?.channelArn) return;
-
-    try {
-      const isLive = await ivsService.checkChannelLiveStatus(profile.channelArn);
-      console.log('Current live status:', profile.isLive, 'New live status:', isLive);
-      
-      if (isLive !== profile.isLive) {
-        console.log('Updating live status in database...');
-        const { data: updatedProfile } = await client.models.Profile.update({
-          id: profile.id,
-          isLive,
-          lastStreamedAt: isLive ? new Date().toISOString() : profile.lastStreamedAt
-        });
-
-        console.log('Profile updated:', updatedProfile);
-        if (updatedProfile) {
-          setProfile(updatedProfile);
-        }
-      }
-    } catch (err) {
-      console.error('Error checking live status:', err);
-    }
-  }, [profile?.channelArn, profile?.isLive, profile?.id]);
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<ProfileScreenRouteProp>();
 
   useEffect(() => {
     loadProfile();
   }, []);
-
-  // Set up polling for live status
-  useEffect(() => {
-    if (!profile?.channelArn) return;
-
-    // Check immediately
-    checkLiveStatus();
-
-    // Then check every 10 seconds
-    const interval = setInterval(checkLiveStatus, 10000);
-
-    return () => clearInterval(interval);
-  }, [profile?.channelArn, checkLiveStatus]);
 
   const loadProfile = async () => {
     try {
@@ -94,26 +73,26 @@ export default function ProfileScreen() {
 
   if (isLoading) {
     return (
-      <AuthenticatedLayout>
+      <MainLayout navigation={navigation} route={route}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
         </View>
-      </AuthenticatedLayout>
+      </MainLayout>
     );
   }
 
   if (error || !profile) {
     return (
-      <AuthenticatedLayout>
+      <MainLayout navigation={navigation} route={route}>
         <View style={styles.errorContainer}>
           <Text style={styles.error}>{error || 'No profile data available'}</Text>
         </View>
-      </AuthenticatedLayout>
+      </MainLayout>
     );
   }
 
   return (
-    <AuthenticatedLayout>
+    <MainLayout navigation={navigation} route={route}>
       <ScrollView style={styles.container}>
         {/* Basic Profile Info */}
         <View style={styles.section}>
@@ -223,7 +202,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </AuthenticatedLayout>
+    </MainLayout>
   );
 }
 

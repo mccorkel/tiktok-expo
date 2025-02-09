@@ -1,185 +1,196 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { StyleSheet, View, Dimensions, Platform } from 'react-native';
-import IVSPlayer, { IVSPlayerRef, PlayerState } from 'amazon-ivs-react-native-player';
-import { IconButton, ActivityIndicator, Text } from 'react-native-paper';
-import Slider from '@react-native-community/slider';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useIsFocused } from '@react-navigation/native';
+import React, { useState } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  FlatList, 
+  TouchableOpacity, 
+  Image,
+  ActivityIndicator,
+  Dimensions
+} from 'react-native';
+import type { Schema } from '../../amplify/data/resource';
+import AuthenticatedLayout from '../layouts/AuthenticatedLayout';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
+import { useStreamStatus } from '../providers/StreamStatusProvider';
+import { IVSService } from '../services/IVSService';
+import { generateClient } from 'aws-amplify/api';
+import { MainLayout } from '../components/MainLayout';
 
+const AWS_REGION = 'us-east-1'; // Same region as our IVS setup
 const { width } = Dimensions.get('window');
+const THUMBNAIL_WIDTH = width / 2 - 30; // 2 columns with padding
+const THUMBNAIL_HEIGHT = THUMBNAIL_WIDTH * (9/16); // 16:9 aspect ratio
+const THUMBNAIL_RETRY_INTERVAL = 5000; // 5 seconds between retries
 
-export default function BrowseScreen() {
-  const playerRef = React.useRef<IVSPlayerRef>(null);
-  const [paused, setPaused] = useState(true);
-  const [buffering, setBuffering] = useState(false);
-  const [duration, setDuration] = useState<number | null>(null);
-  const [position, setPosition] = useState<number>(0);
-  const [lockPosition, setLockPosition] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [volume, setVolume] = useState(1);
-  const isFocused = useIsFocused();
+const ivsService = new IVSService();
+const client = generateClient<Schema>();
 
-  // Pause video when screen loses focus
-  useEffect(() => {
-    if (!isFocused) {
-      setPaused(true);
-    }
-  }, [isFocused]);
-
-  return (
-    <View style={styles.container}>
-      <View style={styles.playerContainer}>
-        {buffering && Platform.OS === 'ios' && (
-          <ActivityIndicator animating size="large" style={styles.loader} />
-        )}
-        
-        <IVSPlayer 
-          ref={playerRef}
-          streamUrl="https://fcc3ddae59ed.us-west-2.playback.live-video.net/api/video/v1/us-west-2.893648527354.channel.DmumNckWFTqz.m3u8"
-          style={styles.player}
-          autoplay={false}
-          paused={paused}
-          muted={isMuted}
-          onDurationChange={setDuration}
-          onRebuffering={() => setBuffering(true)}
-          onPlayerStateChange={(state) => {
-            if (state === PlayerState.Playing || state === PlayerState.Idle) {
-              setBuffering(false);
-            }
-          }}
-          onProgress={(newPosition) => {
-            if (!lockPosition) {
-              setPosition(newPosition);
-            }
-          }}
-        >
-          <SafeAreaView style={styles.controls}>
-            <View style={styles.progressContainer}>
-              <Text style={styles.timeText}>
-                {formatTime(position)} / {formatTime(duration || 0)}
-              </Text>
-              {duration && (
-                <Slider
-                  style={styles.slider}
-                  minimumValue={0}
-                  maximumValue={duration}
-                  value={position}
-                  onSlidingComplete={(value) => {
-                    playerRef.current?.seekTo(value);
-                  }}
-                  onTouchStart={() => setLockPosition(true)}
-                  onTouchEnd={() => setLockPosition(false)}
-                />
-              )}
-            </View>
-            
-            <View style={styles.buttonContainer}>
-              <IconButton
-                icon={paused ? 'play' : 'pause'}
-                size={40}
-                iconColor="white"
-                onPress={() => setPaused(!paused)}
-                style={styles.playButton}
-              />
-              <View style={styles.volumeContainer}>
-                <IconButton
-                  icon={isMuted ? "volume-off" : "volume-high"}
-                  size={24}
-                  iconColor="white"
-                  onPress={() => setIsMuted(!isMuted)}
-                />
-                <Slider
-                  style={styles.volumeSlider}
-                  minimumValue={0}
-                  maximumValue={1}
-                  value={isMuted ? 0 : volume}
-                  onValueChange={(value) => {
-                    if (value === 0) {
-                      setIsMuted(true);
-                    } else {
-                      setVolume(value);
-                      setIsMuted(false);
-                    }
-                  }}
-                />
-              </View>
-              <IconButton
-                icon="picture-in-picture-top-right"
-                size={40}
-                iconColor="white"
-                onPress={() => playerRef.current?.togglePip()}
-                style={styles.pipButton}
-              />
-            </View>
-          </SafeAreaView>
-        </IVSPlayer>
-      </View>
-    </View>
-  );
+type Profile = Schema['Profile']['type'];
+interface StreamWithThumbnail extends Profile {
+  thumbnailError?: boolean;
+  thumbnailKey?: number; // Used to force image refresh
 }
 
-const formatTime = (seconds: number): string => {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+type RootStackParamList = {
+  Home: undefined;
+  Browse: undefined;
+  Following: undefined;
+  Profile: undefined;
+  GoLive: undefined;
+  TestChat: undefined;
+  ChannelTest: undefined;
+  StreamDetails: { streamId: string };
 };
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type BrowseScreenRouteProp = RouteProp<RootStackParamList, 'Browse'>;
+
+type ProfileUpdate = {
+  id: string;
+  lastStreamedAt: string | null;
+};
+
+export default function BrowseScreen() {
+  const { liveChannels, isLoading, error } = useStreamStatus();
+  const [thumbnailStates, setThumbnailStates] = useState<Record<string, { error: boolean, key: number }>>({});
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<BrowseScreenRouteProp>();
+
+  const handleStreamPress = (stream: StreamWithThumbnail) => {
+    navigation.navigate('StreamDetails', { streamId: stream.id });
+  };
+
+  const renderStreamItem = ({ item }: { item: StreamWithThumbnail }) => {
+    return (
+      <TouchableOpacity 
+        style={styles.streamItem} 
+        onPress={() => handleStreamPress(item)}
+      >
+        <View style={styles.thumbnailContainer}>
+          <View style={[styles.thumbnail, styles.thumbnailError]}>
+            <Text style={styles.thumbnailErrorText}>Live Stream</Text>
+          </View>
+          <View style={styles.liveIndicator}>
+            <Text style={styles.liveText}>LIVE</Text>
+          </View>
+        </View>
+        <Text style={styles.streamTitle} numberOfLines={1}>
+          {item.displayName}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <MainLayout navigation={navigation} route={route}>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+        </View>
+      </MainLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <MainLayout navigation={navigation} route={route}>
+        <View style={styles.centerContainer}>
+          <Text style={styles.error}>{error}</Text>
+        </View>
+      </MainLayout>
+    );
+  }
+
+  return (
+    <MainLayout navigation={navigation} route={route}>
+      <View style={styles.container}>
+        {liveChannels.length === 0 ? (
+          <View style={styles.centerContainer}>
+            <Text style={styles.noStreamsText}>No live streams available</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={liveChannels}
+            renderItem={renderStreamItem}
+            keyExtractor={item => item.id}
+            numColumns={2}
+            columnWrapperStyle={styles.row}
+            contentContainerStyle={styles.list}
+          />
+        )}
+      </View>
+    </MainLayout>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center',
+    backgroundColor: '#fff',
   },
-  playerContainer: {
-    width: width,
-    height: width * (9/16),
-    backgroundColor: '#000',
-    alignSelf: 'center',
-  },
-  player: {
+  centerContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  controls: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
+  list: {
+    padding: 15,
   },
-  progressContainer: {
-    marginBottom: 10,
-  },
-  timeText: {
-    color: 'white',
-    marginBottom: 5,
-  },
-  slider: {
-    width: '100%',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
+  row: {
     justifyContent: 'space-between',
-    alignItems: 'center',
   },
-  playButton: {
-    borderWidth: 1,
-    borderColor: 'white',
+  streamItem: {
+    width: THUMBNAIL_WIDTH,
+    marginBottom: 20,
   },
-  pipButton: {
-    marginLeft: 'auto',
+  thumbnailContainer: {
+    position: 'relative',
   },
-  loader: {
+  thumbnail: {
+    width: THUMBNAIL_WIDTH,
+    height: THUMBNAIL_HEIGHT,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  liveIndicator: {
     position: 'absolute',
-    zIndex: 1,
-    alignSelf: 'center',
-    top: '50%',
+    top: 8,
+    left: 8,
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
   },
-  volumeContainer: {
-    flexDirection: 'row',
+  liveText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  streamTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginTop: 8,
+  },
+  error: {
+    color: '#FF3B30',
+    textAlign: 'center',
+  },
+  noStreamsText: {
+    color: '#666',
+    fontSize: 16,
+  },
+  thumbnailError: {
+    backgroundColor: '#1a1a1a',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  volumeSlider: {
-    width: 100,
-    height: 24,
+  thumbnailErrorText: {
+    color: '#fff',
+    fontSize: 12,
+    textAlign: 'center',
+    padding: 10,
   },
 }); 

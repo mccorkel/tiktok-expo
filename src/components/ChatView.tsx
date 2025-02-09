@@ -21,12 +21,13 @@ type ChatViewProps = {
     displayName: string;
   };
   onBack: () => void;
+  showHeader?: boolean;
 };
 
-export default function ChatView({ channel, onBack }: ChatViewProps) {
+export default function ChatView({ channel, onBack, showHeader = true }: ChatViewProps) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const { joinRoom, sendMessage, messages, isConnected } = useChat();
+  const { joinRoom, sendMessage, messages, isConnected, loadRecentMessages } = useChat();
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -71,28 +72,39 @@ export default function ChatView({ channel, onBack }: ChatViewProps) {
     }
   };
 
+  // Create a map of unique messages based on id and content
+  const uniqueMessages = messages.reduce((acc, msg) => {
+    const key = `${msg.id}-${msg.content}`;
+    if (!acc.has(key)) {
+      acc.set(key, msg);
+    }
+    return acc;
+  }, new Map());
+
   return (
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack}>
-          <Ionicons name="arrow-back" size={24} color="black" />
-        </TouchableOpacity>
-        <Text style={styles.channelName}>{channel.displayName}</Text>
-        <Text style={[styles.status, { color: isConnected ? 'green' : 'red' }]}>
-          {isConnected ? 'Connected' : 'Disconnected'}
-        </Text>
-      </View>
+      {showHeader && (
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack}>
+            <Ionicons name="arrow-back" size={24} color="black" />
+          </TouchableOpacity>
+          <Text style={styles.channelName}>{channel.displayName}</Text>
+          <Text style={[styles.status, { color: isConnected ? 'green' : 'red' }]}>
+            {isConnected ? 'Connected' : 'Disconnected'}
+          </Text>
+        </View>
+      )}
       
       <ScrollView 
         ref={scrollViewRef}
-        style={styles.messages}
+        style={[styles.messages, !showHeader && styles.messagesNoHeader]}
         onContentSizeChange={() => scrollViewRef.current?.scrollToEnd()}
       >
-        {messages.map((msg) => (
-          <View key={msg.id} style={styles.message}>
+        {Array.from(uniqueMessages.values()).map((msg) => (
+          <View key={`${msg.id}-${msg.content}`} style={styles.message}>
             <Text style={styles.sender}>
               {msg.attributes.displayName || 
                 (msg.attributes.senderId ? 
@@ -181,5 +193,8 @@ const styles = StyleSheet.create({
   status: {
     marginLeft: 'auto',
     fontWeight: 'bold',
-  }
+  },
+  messagesNoHeader: {
+    paddingTop: 0,
+  },
 }); 

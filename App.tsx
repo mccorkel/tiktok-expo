@@ -8,13 +8,12 @@ import { StyleSheet, View, ActivityIndicator } from "react-native";
 import { Amplify } from "aws-amplify";
 import { withAuthenticator } from "@aws-amplify/ui-react-native";
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ChatProvider, useChat } from './src/providers/ChatProvider';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/api';
 import type { Schema } from './amplify/data/resource';
+import { StreamStatusProvider } from './src/providers/StreamStatusProvider';
 
 // Import screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -25,12 +24,13 @@ import GoLiveScreen from './src/screens/GoLiveScreen';
 import TestChatScreen from './src/screens/TestChatScreen';
 import DisplayNameScreen from './src/screens/DisplayNameScreen';
 import ChannelTestScreen from './src/screens/ChannelTestScreen';
+import StreamDetailsScreen from './src/screens/StreamDetailsScreen';
 
 import outputs from "./amplify_outputs.json";
 
 Amplify.configure(outputs);
 
-type RootTabParamList = {
+type RootStackParamList = {
   Home: undefined;
   Browse: undefined;
   Following: undefined;
@@ -38,16 +38,10 @@ type RootTabParamList = {
   GoLive: undefined;
   TestChat: undefined;
   ChannelTest: undefined;
+  StreamDetails: { streamId: string };
 };
 
-const Tab = createBottomTabNavigator<RootTabParamList>();
-
-const TAB_COLORS = {
-  home: '#007AFF',    // Keep blue for home
-  browse: '#34C759',  // Green for browse
-  following: '#FF3B30', // Red for following
-  profile: '#AF52DE'  // Purple for profile
-};
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function ChannelSetup() {
   const { getUserChatRoom } = useChat();
@@ -111,121 +105,85 @@ function App() {
 
   return (
     <ChatProvider>
-      <ChannelSetup />
-      <NavigationContainer>
-        <Tab.Navigator
-          screenOptions={{
-            headerShown: false,
-            tabBarStyle: styles.tabBar,
-            tabBarActiveTintColor: '#007AFF',
-            tabBarInactiveTintColor: '#999999',
-          }}
-        >
-          <Tab.Screen 
-            name="Home" 
-            component={HomeScreen}
-            options={{
-              tabBarIcon: ({ focused, size }) => (
-                <Ionicons 
-                  name="home" 
-                  color={focused ? TAB_COLORS.home : '#999999'} 
-                  size={size} 
-                />
-              ),
-              tabBarActiveTintColor: TAB_COLORS.home,
-            }}
-          />
-          <Tab.Screen 
-            name="Browse" 
-            component={BrowseScreen}
-            options={{
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons name="compass-outline" size={size} color={color} />
-              ),
-            }}
-          />
-          <Tab.Screen 
-            name="Following" 
-            component={FollowingScreen}
-            options={{
-              tabBarIcon: ({ focused, size }) => (
-                <Ionicons 
-                  name="heart" 
-                  color={focused ? TAB_COLORS.following : '#999999'} 
-                  size={size} 
-                />
-              ),
-              tabBarActiveTintColor: TAB_COLORS.following,
-            }}
-          />
-          <Tab.Screen 
-            name="Profile" 
-            component={ProfileScreen}
-            options={{
-              tabBarIcon: ({ focused, size }) => (
-                <Ionicons 
-                  name="person" 
-                  color={focused ? TAB_COLORS.profile : '#999999'} 
-                  size={size} 
-                />
-              ),
-              tabBarActiveTintColor: TAB_COLORS.profile,
-            }}
-          />
-          <Tab.Screen 
-            name="GoLive" 
-            component={GoLiveScreen}
-            options={{
-              tabBarIcon: ({ color }) => (
-                <MaterialCommunityIcons name="record-circle-outline" size={24} color={color} />
-              ),
-              tabBarLabel: 'Go Live',
-            }}
-          />
-          <Tab.Screen 
-            name="TestChat" 
-            component={TestChatScreen}
-            options={{
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons name="chatbubbles-outline" size={size} color={color} />
-              ),
-            }}
-          />
-          <Tab.Screen 
-            name="ChannelTest" 
-            component={ChannelTestScreen}
-            options={{
-              tabBarIcon: ({ color, size }) => (
-                <MaterialCommunityIcons name="video-check" size={size} color={color} />
-              ),
-              tabBarLabel: 'Channel Test',
-            }}
-          />
-        </Tab.Navigator>
-      </NavigationContainer>
+      <StreamStatusProvider>
+        <ChannelSetup />
+        <NavigationContainer>
+          <Stack.Navigator initialRouteName="Home">
+            <Stack.Screen 
+              name="Home"
+              component={HomeScreen}
+              options={{ 
+                headerShown: false,
+                contentStyle: { backgroundColor: 'white' }
+              }}
+            />
+            <Stack.Screen 
+              name="Browse"
+              component={BrowseScreen}
+              options={{ 
+                headerShown: false,
+                contentStyle: { backgroundColor: 'white' }
+              }}
+            />
+            <Stack.Screen 
+              name="Following"
+              component={FollowingScreen}
+              options={{ 
+                headerShown: false,
+                contentStyle: { backgroundColor: 'white' }
+              }}
+            />
+            <Stack.Screen 
+              name="Profile"
+              component={ProfileScreen}
+              options={{ 
+                headerShown: false,
+                contentStyle: { backgroundColor: 'white' }
+              }}
+            />
+            <Stack.Screen 
+              name="GoLive"
+              component={GoLiveScreen}
+              options={{ 
+                headerShown: false,
+                contentStyle: { backgroundColor: 'white' }
+              }}
+            />
+            <Stack.Screen 
+              name="TestChat"
+              component={TestChatScreen}
+              options={{ 
+                headerShown: false,
+                contentStyle: { backgroundColor: 'white' }
+              }}
+            />
+            <Stack.Screen 
+              name="ChannelTest"
+              component={ChannelTestScreen}
+              options={{ 
+                headerShown: false,
+                contentStyle: { backgroundColor: 'white' }
+              }}
+            />
+            <Stack.Screen 
+              name="StreamDetails"
+              component={StreamDetailsScreen}
+              options={{ headerShown: false }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </StreamStatusProvider>
     </ChatProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    height: 60,
-    paddingBottom: 8,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
-  },
+  }
 });
 
 export default withAuthenticator(App);

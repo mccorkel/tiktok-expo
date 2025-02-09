@@ -50,9 +50,13 @@ type ChatContextType = {
   currentChannel: ChatRoomType | null;
   sendMessage: (content: string) => Promise<void>;
   isConnected: boolean;
+  loadRecentMessages: (roomArn: string) => ChatMessage[];
 };
 
 const ChatContext = createContext<ChatContextType>({} as ChatContextType);
+
+// Maximum number of messages to store per channel
+const MAX_MESSAGES_PER_CHANNEL = 100;
 
 export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -60,6 +64,30 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentChannel, setCurrentChannel] = useState<ChatRoomType | null>(null);
   const [room, setRoom] = useState<ChatRoom | null>(null);
   const client = generateClient<Schema>();
+
+  // Store messages per channel
+  const messagesByChannel = useRef<Map<string, ChatMessage[]>>(new Map());
+
+  const addMessageToChannel = (roomArn: string, message: ChatMessage) => {
+    const channelMessages = messagesByChannel.current.get(roomArn) || [];
+    const updatedMessages = [...channelMessages, message];
+    
+    // Keep only the most recent messages if we exceed the maximum
+    if (updatedMessages.length > MAX_MESSAGES_PER_CHANNEL) {
+      updatedMessages.splice(0, updatedMessages.length - MAX_MESSAGES_PER_CHANNEL);
+    }
+    
+    messagesByChannel.current.set(roomArn, updatedMessages);
+    
+    // If this is the current channel, update the messages state
+    if (room?.roomIdentifier === roomArn) {
+      setMessages(updatedMessages);
+    }
+  };
+
+  const loadRecentMessages = (roomArn: string): ChatMessage[] => {
+    return messagesByChannel.current.get(roomArn) || [];
+  };
 
   const tokenProvider = async (user: {id: string, username: string}): Promise<ChatToken> => {
     const { credentials } = await fetchAuthSession();
@@ -101,7 +129,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         try {
           const parsedMessage = MessageSchema.parse(message);
           console.log('Parsed message:', parsedMessage);
-          setMessages(prev => [...prev, parsedMessage]);
+          addMessageToChannel(roomArn, parsedMessage);
         } catch (error) {
           console.error('Failed to parse message:', error);
           console.error('Original message:', message);
@@ -110,6 +138,10 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
       await chatRoom.connect();
       setRoom(chatRoom);
+
+      // Load existing messages for this channel
+      const existingMessages = loadRecentMessages(roomArn);
+      setMessages(existingMessages);
     } catch (error) {
       console.error('Failed to join room:', error);
       throw error;
@@ -190,7 +222,8 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       listChannels,
       currentChannel,
       sendMessage,
-      isConnected
+      isConnected,
+      loadRecentMessages
     }}>
       {children}
     </ChatContext.Provider>
