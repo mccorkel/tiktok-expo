@@ -1,6 +1,10 @@
 package com.tiktokexpo;
 
 import android.os.Bundle;
+import android.content.res.Configuration;
+import android.app.PictureInPictureParams;
+import android.util.Rational;
+import android.util.Log;
 import com.facebook.react.ReactActivity;
 import com.facebook.react.ReactActivityDelegate;
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint;
@@ -14,8 +18,21 @@ public class MainActivity extends ReactActivity {
   }
 
   @Override
-  public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode) {
-    super.onPictureInPictureModeChanged(isInPictureInPictureMode);
+  public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
+    super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
+    Log.d("PIP", "PIP mode changed: " + isInPictureInPictureMode);
+  }
+
+  @Override
+  public void onUserLeaveHint() {
+    try {
+      PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder();
+      builder.setAspectRatio(new Rational(16, 9));
+      enterPictureInPictureMode(builder.build());
+      Log.d("PIP", "Entering PIP mode from onUserLeaveHint");
+    } catch (Exception e) {
+      Log.e("PIP", "Failed to enter PIP mode: " + e.getMessage());
+    }
   }
 
   /**

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -9,7 +9,9 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   SafeAreaView,
-  TouchableOpacity
+  TouchableOpacity,
+  AppState,
+  AppStateStatus
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { generateClient } from 'aws-amplify/api';
@@ -20,6 +22,7 @@ import { IVSService } from '../services/IVSService';
 import ChatView from '../components/ChatView';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 type RootStackParamList = {
   Home: undefined;
@@ -48,7 +51,7 @@ export default function StreamDetailsScreen() {
   const [currentTime, setCurrentTime] = useState(0);
   const [qualities, setQualities] = useState<Quality[]>([]);
   const [selectedQuality, setSelectedQuality] = useState<Quality | null>(null);
-  const [showControls, setShowControls] = useState(true);
+  const [showControls, setShowControls] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const playerRef = useRef<IVSPlayerRef>(null);
   const route = useRoute();
@@ -56,12 +59,42 @@ export default function StreamDetailsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
   const streamId = (route.params as any)?.streamId;
+  const [isInPipMode, setIsInPipMode] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY = 3000; // 3 seconds
+  const retryTimeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     navigation.setOptions({
       headerShown: false
     });
-  }, [navigation]);
+
+    // Hide controls after initial mount
+    const initialTimeout = setTimeout(() => {
+      setShowControls(false);
+    }, 1000);
+
+    // Reset orientation when navigating away
+    return () => {
+      if (isFullscreen) {
+        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+      }
+      clearTimeout(initialTimeout);
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, [navigation, isFullscreen]);
+
+  // Ensure controls are hidden when entering fullscreen
+  useEffect(() => {
+    if (isFullscreen) {
+      setShowControls(false);
+    }
+  }, [isFullscreen]);
 
   useEffect(() => {
     if (streamId) {
@@ -73,13 +106,91 @@ export default function StreamDetailsScreen() {
     if (!isFocused && playerRef.current) {
       playerRef.current.pause();
       setIsPaused(true);
+      // Reset orientation when screen loses focus
+      if (isFullscreen) {
+        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+        setIsFullscreen(false);
+      }
     }
-  }, [isFocused]);
+  }, [isFocused, isFullscreen]);
+
+  // Add AppState listener for background state
+  useEffect(() => {
+    console.log('[PIP] Setting up AppState listener');
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => {
+      console.log('[PIP] Cleaning up AppState listener');
+      subscription.remove();
+    };
+  }, []);
+
+  const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+    console.log('[PIP] App state changed:', { nextAppState });
+    
+    // When app goes to background and we're on stream details screen
+    if (nextAppState === 'background' && stream?.isLive && playerRef.current) {
+      console.log('[PIP] App going to background with active stream, attempting PIP');
+      try {
+        // Ensure we're not muted when entering PIP
+        setIsMuted(false);
+        // Try to enter PIP mode
+        await playerRef.current.togglePip();
+        setIsInPipMode(true);
+        console.log('[PIP] Successfully entered PIP mode');
+      } catch (err) {
+        console.error('[PIP] Failed to enter PIP mode on background:', err);
+      }
+    } else if (nextAppState === 'active' && isInPipMode) {
+      console.log('[PIP] App returning to foreground, exiting PIP mode');
+      try {
+        await playerRef.current?.togglePip();
+        setIsInPipMode(false);
+      } catch (err) {
+        console.error('[PIP] Failed to exit PIP mode:', err);
+      }
+    }
+  };
+
+  const handleRetry = useCallback(async () => {
+    if (retryCount >= MAX_RETRIES) {
+      setConnectionError('Unable to connect after multiple attempts. Please try again later.');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setConnectionError(null);
+      
+      // Retry loading stream details
+      await loadStreamDetails();
+      
+      // Reset retry count on success
+      setRetryCount(0);
+    } catch (err) {
+      console.error('Retry attempt failed:', err);
+      setRetryCount(prev => prev + 1);
+      
+      // Schedule another retry after delay
+      retryTimeoutRef.current = setTimeout(handleRetry, RETRY_DELAY);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [retryCount, streamId]);
+
+  // Clean up retry timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const loadStreamDetails = async () => {
     try {
       setIsLoading(true);
       setError(null);
+      setConnectionError(null);
 
       const { data: profile } = await client.models.Profile.get({ id: streamId });
       
@@ -89,8 +200,13 @@ export default function StreamDetailsScreen() {
       }
 
       let isActuallyLive = false;
-      if (profile.channelArn) {
-        isActuallyLive = await ivsService.checkChannelLiveStatus(profile.channelArn);
+      try {
+        if (profile.channelArn) {
+          isActuallyLive = await ivsService.checkChannelLiveStatus(profile.channelArn);
+        }
+      } catch (err) {
+        console.error('Error checking live status:', err);
+        throw new Error('Failed to check stream status');
       }
       
       const updatedProfile = {
@@ -106,7 +222,13 @@ export default function StreamDetailsScreen() {
       }
     } catch (err) {
       console.error('Error loading stream details:', err);
-      setError('Failed to load stream details');
+      if (err instanceof Error && err.message.includes('Network')) {
+        setConnectionError('Network connection lost. Retrying...');
+        // Start retry process
+        retryTimeoutRef.current = setTimeout(handleRetry, RETRY_DELAY);
+      } else {
+        setError('Failed to load stream details');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -147,6 +269,15 @@ export default function StreamDetailsScreen() {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  // Clean up control timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const showControlsTemporarily = () => {
     setShowControls(true);
     if (controlsTimeoutRef.current) {
@@ -154,21 +285,61 @@ export default function StreamDetailsScreen() {
     }
     controlsTimeoutRef.current = setTimeout(() => {
       setShowControls(false);
-    }, 3000);
+    }, 1000); // Changed from 3000 to 1000 for 1 second timeout
   };
 
   const handleDisclosurePress = async () => {
+    // Clear the controls timeout when leaving the screen
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    console.log('[PIP] Disclosure button pressed');
     if (playerRef.current) {
       try {
+        console.log('[PIP] Attempting to enter PIP mode');
         await playerRef.current.togglePip();
+        console.log('[PIP] Successfully entered PIP mode, navigating to Browse');
         navigation.navigate('Browse');
       } catch (err) {
-        console.error('Failed to enter PIP mode:', err);
+        console.error('[PIP] Failed to enter PIP mode:', err);
         // Fallback to just navigation if PIP fails
+        console.log('[PIP] Falling back to normal navigation');
         navigation.navigate('Browse');
       }
+    } else {
+      console.warn('[PIP] Player reference not available for PIP');
+      navigation.navigate('Browse');
     }
   };
+
+  const togglePip = () => {
+    console.log('[PIP] Toggle PIP button pressed');
+    if (playerRef.current) {
+      playerRef.current.togglePip();
+    }
+  };
+
+  const handleFullscreenToggle = async () => {
+    try {
+      if (isFullscreen) {
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+        setIsFullscreen(false);
+      } else {
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+        setIsFullscreen(true);
+      }
+    } catch (error) {
+      console.error('Failed to toggle fullscreen:', error);
+    }
+  };
+
+  // Add cleanup for screen orientation
+  useEffect(() => {
+    return () => {
+      // Reset orientation when component unmounts
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+    };
+  }, []);
 
   if (isLoading) {
     return (
@@ -191,17 +362,26 @@ export default function StreamDetailsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[
+      styles.container,
+      isFullscreen && { backgroundColor: '#000' }
+    ]}>
       <KeyboardAvoidingView 
-        style={styles.container}
+        style={[
+          styles.container,
+          isFullscreen && { backgroundColor: '#000' }
+        ]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.playerContainer}>
+        <View style={[
+          styles.playerContainer,
+          isFullscreen && styles.playerContainerFullscreen
+        ]}>
           {stream.isLive && stream.playbackUrl ? (
             <TouchableOpacity 
               activeOpacity={1} 
               onPress={showControlsTemporarily}
-              style={styles.playerWrapper}
+              style={[styles.playerWrapper, isFullscreen && { width: '100%', height: '100%' }]}
             >
               <IVSPlayer
                 ref={playerRef}
@@ -211,6 +391,16 @@ export default function StreamDetailsScreen() {
                 muted={isMuted}
                 volume={volume}
                 quality={selectedQuality}
+                resizeMode={isFullscreen ? "aspectFit" : "aspectFill"}
+                liveLowLatency={true}
+                onPipChange={(isInPip: boolean) => {
+                  console.log('[PIP] PIP state changed:', { isInPip });
+                  setIsInPipMode(isInPip);
+                  if (isInPip && playerRef.current) {
+                    setIsMuted(false);
+                    playerRef.current.play();
+                  }
+                }}
                 onDurationChange={(duration: number | null) => {
                   if (duration !== null) {
                     setDuration(duration);
@@ -219,68 +409,114 @@ export default function StreamDetailsScreen() {
                 onProgress={setCurrentTime}
                 onQualityChange={setSelectedQuality}
                 onPlayerStateChange={(state: string) => {
+                  console.log('[Player] State changed:', { state });
                   setIsBuffering(state === 'Buffering');
+                  
+                  // Handle disconnection states
+                  if (state === 'Idle' || state === 'Error') {
+                    if (isInPipMode && playerRef.current) {
+                      console.log('[Player] Attempting to restart stream in PIP mode');
+                      playerRef.current.play();
+                    } else if (state === 'Error') {
+                      setConnectionError('Stream connection lost. Attempting to reconnect...');
+                      handleRetry();
+                    }
+                  } else if (state === 'Playing') {
+                    setConnectionError(null);
+                    setRetryCount(0);
+                  }
                 }}
                 onError={(err) => {
-                  console.error('Player error:', err);
-                  setError('Failed to play stream');
+                  console.error('[Player] Error:', err);
+                  setConnectionError('Stream connection error. Attempting to reconnect...');
+                  handleRetry();
                 }}
               />
               {showControls && (
-                <View style={styles.controls}>
-                  <View style={styles.topControls}>
-                    <TouchableOpacity 
-                      onPress={handleDisclosurePress}
-                      style={styles.disclosureButton}
-                    >
-                      <Ionicons 
-                        name="chevron-down" 
-                        size={28} 
-                        color="white" 
-                      />
-                    </TouchableOpacity>
-                  </View>
-                  
-                  <View style={styles.centerControls}>
-                    {isBuffering ? (
-                      <ActivityIndicator size="large" color="white" />
-                    ) : (
+                <>
+                  <View style={styles.controlsOverlay} />
+                  <View style={styles.controls}>
+                    <View style={styles.topControls}>
                       <TouchableOpacity 
-                        onPress={togglePlayPause}
-                        style={styles.playPauseButton}
+                        onPress={handleDisclosurePress}
+                        style={styles.disclosureButton}
                       >
                         <Ionicons 
-                          name={isPaused ? 'play' : 'pause'} 
-                          size={40} 
+                          name="chevron-down" 
+                          size={28} 
                           color="white" 
                         />
                       </TouchableOpacity>
-                    )}
-                  </View>
-
-                  <View style={styles.bottomControls}>
-                    <TouchableOpacity onPress={toggleMute} style={styles.muteButton}>
-                      <Ionicons 
-                        name={isMuted ? 'volume-mute' : 'volume-high'} 
-                        size={24} 
-                        color="white" 
-                      />
-                    </TouchableOpacity>
-
-                    {qualities.length > 0 && (
+                      
                       <TouchableOpacity 
-                        style={styles.qualityButton}
-                        onPress={() => {
-                          // Show quality selection menu
-                          // You can implement a modal or dropdown here
-                        }}
+                        onPress={handleFullscreenToggle}
+                        style={[styles.disclosureButton, { marginLeft: 10 }]}
                       >
-                        <Text style={styles.qualityText}>
-                          {selectedQuality?.name || 'Auto'}
-                        </Text>
+                        <Ionicons 
+                          name={isFullscreen ? "contract" : "expand"} 
+                          size={28} 
+                          color="white" 
+                        />
                       </TouchableOpacity>
-                    )}
+                    </View>
+                    
+                    <View style={styles.centerControls}>
+                      {isBuffering ? (
+                        <ActivityIndicator size="large" color="white" />
+                      ) : (
+                        <TouchableOpacity 
+                          onPress={togglePlayPause}
+                          style={styles.playPauseButton}
+                        >
+                          <Ionicons 
+                            name={isPaused ? 'play' : 'pause'} 
+                            size={40} 
+                            color="white" 
+                          />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    <View style={styles.bottomControls}>
+                      <TouchableOpacity onPress={toggleMute} style={styles.muteButton}>
+                        <Ionicons 
+                          name={isMuted ? 'volume-mute' : 'volume-high'} 
+                          size={24} 
+                          color="white" 
+                        />
+                      </TouchableOpacity>
+
+                      {qualities.length > 0 && (
+                        <TouchableOpacity 
+                          style={styles.qualityButton}
+                          onPress={() => {
+                            // Show quality selection menu
+                            // You can implement a modal or dropdown here
+                          }}
+                        >
+                          <Text style={styles.qualityText}>
+                            {selectedQuality?.name || 'Auto'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
+                </>
+              )}
+              {(connectionError || error) && (
+                <View style={styles.errorOverlay}>
+                  <Text style={styles.errorText}>{connectionError || error}</Text>
+                  {connectionError && (
+                    <TouchableOpacity 
+                      style={styles.retryButton}
+                      onPress={handleRetry}
+                      disabled={isLoading}
+                    >
+                      <Text style={styles.retryButtonText}>
+                        {isLoading ? 'Retrying...' : 'Retry Now'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
             </TouchableOpacity>
@@ -304,7 +540,10 @@ export default function StreamDetailsScreen() {
         </View>
 
         {stream.chatRoomArn && stream.displayName && (
-          <View style={styles.chatContainer}>
+          <View style={[
+            styles.chatContainer,
+            isFullscreen && styles.chatContainerFullscreen
+          ]}>
             <ChatView 
               channel={{
                 roomArn: stream.chatRoomArn,
@@ -312,6 +551,7 @@ export default function StreamDetailsScreen() {
               }}
               onBack={() => navigation.goBack()}
               showHeader={false}
+              isFullscreen={isFullscreen}
             />
           </View>
         )}
@@ -345,17 +585,25 @@ const styles = StyleSheet.create({
     width: width,
     height: PLAYER_HEIGHT,
     backgroundColor: '#000',
+    overflow: 'hidden',
   },
   playerWrapper: {
     flex: 1,
+    backgroundColor: '#000',
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   player: {
     flex: 1,
+    width: '100%',
+    height: '100%',
+    zIndex: 1,
   },
   controls: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'space-between',
+    zIndex: 3,
   },
   topControls: {
     flexDirection: 'row',
@@ -421,6 +669,17 @@ const styles = StyleSheet.create({
     flex: 1,
     borderTopWidth: 1,
     borderTopColor: '#eee',
+    backgroundColor: '#fff',
+  },
+  chatContainerFullscreen: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: '25%',
+    backgroundColor: '#000',
+    borderWidth: 0,
+    zIndex: 4,
   },
   disclosureButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -432,5 +691,48 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     borderRadius: 30,
     padding: 15,
+  },
+  errorOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  controlsOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 2,
+  },
+  playerContainerFullscreen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '75%',
+    height: '100%',
+    backgroundColor: '#000',
+    zIndex: 1,
+    overflow: 'hidden',
   },
 }); 

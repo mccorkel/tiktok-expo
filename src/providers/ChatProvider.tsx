@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useRef } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { Platform } from 'react-native';
 import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/api';
@@ -50,7 +50,7 @@ type ChatContextType = {
   currentChannel: ChatRoomType | null;
   sendMessage: (content: string) => Promise<void>;
   isConnected: boolean;
-  loadRecentMessages: (roomArn: string) => ChatMessage[];
+  loadRecentMessages: (roomArn: string) => Promise<ChatMessage[]>;
 };
 
 const ChatContext = createContext<ChatContextType>({} as ChatContextType);
@@ -65,28 +65,73 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [room, setRoom] = useState<ChatRoom | null>(null);
   const client = generateClient<Schema>();
 
-  // Store messages per channel
-  const messagesByChannel = useRef<Map<string, ChatMessage[]>>(new Map());
+  const loadMessagesFromDb = async (roomArn: string) => {
+    try {
+      const { data: dbMessages } = await client.models.ChatMessage.list({
+        filter: { roomArn: { eq: roomArn } }
+      });
+      
+      // Sort messages by timestamp
+      const sortedMessages = [...dbMessages].sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return timeA - timeB;
+      });
 
-  const addMessageToChannel = (roomArn: string, message: ChatMessage) => {
-    const channelMessages = messagesByChannel.current.get(roomArn) || [];
-    const updatedMessages = [...channelMessages, message];
-    
-    // Keep only the most recent messages if we exceed the maximum
-    if (updatedMessages.length > MAX_MESSAGES_PER_CHANNEL) {
-      updatedMessages.splice(0, updatedMessages.length - MAX_MESSAGES_PER_CHANNEL);
-    }
-    
-    messagesByChannel.current.set(roomArn, updatedMessages);
-    
-    // If this is the current channel, update the messages state
-    if (room?.roomIdentifier === roomArn) {
-      setMessages(updatedMessages);
+      // Take only the last 100 messages
+      const recentMessages = sortedMessages.slice(-100);
+      
+      // Convert DB messages to ChatMessage format and validate with schema
+      const formattedMessages = recentMessages
+        .filter(msg => msg.messageId && msg.content) // Filter out any invalid messages
+        .map(msg => {
+          const message = {
+            id: msg.messageId,
+            content: msg.content,
+            attributes: msg.attributes ? JSON.parse(msg.attributes) : {},
+            sender: {
+              userId: msg.senderId || 'anonymous',
+              attributes: {
+                displayName: msg.senderDisplayName || 'Anonymous'
+              }
+            }
+          };
+          
+          // Validate message format
+          return MessageSchema.parse(message);
+        });
+
+      setMessages(formattedMessages);
+      return formattedMessages;
+    } catch (error) {
+      console.error('Failed to load messages from DB:', error);
+      return [];
     }
   };
 
-  const loadRecentMessages = (roomArn: string): ChatMessage[] => {
-    return messagesByChannel.current.get(roomArn) || [];
+  const saveMessageToDb = async (message: ChatMessage, roomArn: string) => {
+    try {
+      // Validate message format before saving
+      const validatedMessage = MessageSchema.parse(message);
+      const timestamp = typeof validatedMessage.attributes?.clientTimestamp === 'string' 
+        ? validatedMessage.attributes.clientTimestamp 
+        : new Date().toISOString();
+      
+      // Ensure we have a valid messageId
+      const messageId = validatedMessage.id || Date.now().toString();
+      
+      await client.models.ChatMessage.create({
+        roomArn,
+        content: validatedMessage.content,
+        senderId: validatedMessage.sender?.userId || 'anonymous',
+        senderDisplayName: validatedMessage.attributes?.displayName || 'Anonymous',
+        timestamp,
+        messageId,
+        attributes: JSON.stringify(validatedMessage.attributes || {})
+      });
+    } catch (error) {
+      console.error('Failed to save message to DB:', error);
+    }
   };
 
   const tokenProvider = async (user: {id: string, username: string}): Promise<ChatToken> => {
@@ -124,24 +169,44 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       chatRoom.addListener('connecting', () => console.log('Connecting...'));
       chatRoom.addListener('connect', () => setIsConnected(true));
       chatRoom.addListener('disconnect', () => setIsConnected(false));
-      chatRoom.addListener('message', (message: any) => {
+      chatRoom.addListener('message', async (message: any) => {
         console.log('Raw message received:', JSON.stringify(message, null, 2));
         try {
           const parsedMessage = MessageSchema.parse(message);
           console.log('Parsed message:', parsedMessage);
-          addMessageToChannel(roomArn, parsedMessage);
+          
+          // Save message to DB
+          await saveMessageToDb(parsedMessage, roomArn);
+          
+          // Update UI with new message
+          setMessages(prev => [...prev, parsedMessage]);
         } catch (error) {
-          console.error('Failed to parse message:', error);
+          console.error('Failed to handle message:', error);
           console.error('Original message:', message);
         }
       });
 
       await chatRoom.connect();
-      setRoom(chatRoom);
+      
+      // Set the room with the roomIdentifier
+      const roomWithIdentifier = Object.assign(chatRoom, { roomIdentifier: roomArn });
+      setRoom(roomWithIdentifier);
 
-      // Load existing messages for this channel
-      const existingMessages = loadRecentMessages(roomArn);
-      setMessages(existingMessages);
+      // Set current channel
+      setCurrentChannel({
+        id: 'default',
+        userId: user.id,
+        roomArn,
+        displayName: user.username,
+        isActive: true,
+        lastMessageAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        owner: user.id,
+        updatedAt: new Date().toISOString()
+      });
+
+      // Load existing messages from DB
+      await loadMessagesFromDb(roomArn);
     } catch (error) {
       console.error('Failed to join room:', error);
       throw error;
@@ -223,7 +288,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       currentChannel,
       sendMessage,
       isConnected,
-      loadRecentMessages
+      loadRecentMessages: loadMessagesFromDb
     }}>
       {children}
     </ChatContext.Provider>

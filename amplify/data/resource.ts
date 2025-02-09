@@ -33,6 +33,26 @@ const schema = a.schema({
     })
     .authorization(allow => [allow.owner()]),
 
+  ChatMessage: a
+    .model({
+      roomArn: a.string(),
+      content: a.string(),
+      senderId: a.string(),
+      senderDisplayName: a.string(),
+      timestamp: a.string(),
+      attributes: a.string(), // JSON string for additional attributes
+      messageId: a.string(), // IVS message ID for deduplication
+    })
+    .authorization(allow => [
+      // All authenticated users can read messages
+      allow.authenticated().to(['read']),
+      // Owner-based authorization using senderId field
+      allow.owner()
+        .identityClaim('sub')
+        .to(['create', 'update', 'delete'])
+    ]),
+
+    
   // Removed ChatRoom model since we're using IVS stack's chat room
 });
 
