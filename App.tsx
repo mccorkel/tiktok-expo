@@ -16,14 +16,11 @@ import type { Schema } from './amplify/data/resource';
 import { StreamStatusProvider } from './src/providers/StreamStatusProvider';
 
 // Import screens
-import HomeScreen from './src/screens/HomeScreen';
 import BrowseScreen from './src/screens/BrowseScreen';
 import FollowingScreen from './src/screens/FollowingScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import GoLiveScreen from './src/screens/GoLiveScreen';
-import TestChatScreen from './src/screens/TestChatScreen';
 import DisplayNameScreen from './src/screens/DisplayNameScreen';
-import ChannelTestScreen from './src/screens/ChannelTestScreen';
 import StreamDetailsScreen from './src/screens/StreamDetailsScreen';
 
 import outputs from "./amplify_outputs.json";
@@ -31,13 +28,10 @@ import outputs from "./amplify_outputs.json";
 Amplify.configure(outputs);
 
 type RootStackParamList = {
-  Home: undefined;
   Browse: undefined;
   Following: undefined;
   Profile: undefined;
   GoLive: undefined;
-  TestChat: undefined;
-  ChannelTest: undefined;
   StreamDetails: { streamId: string };
 };
 
@@ -108,15 +102,12 @@ function App() {
       <StreamStatusProvider>
         <ChannelSetup />
         <NavigationContainer>
-          <Stack.Navigator initialRouteName="Home">
-            <Stack.Screen 
-              name="Home"
-              component={HomeScreen}
-              options={{ 
-                headerShown: false,
-                contentStyle: { backgroundColor: 'white' }
-              }}
-            />
+          <Stack.Navigator
+            initialRouteName="Browse"
+            screenOptions={{
+              headerShown: false
+            }}
+          >
             <Stack.Screen 
               name="Browse"
               component={BrowseScreen}
@@ -144,22 +135,6 @@ function App() {
             <Stack.Screen 
               name="GoLive"
               component={GoLiveScreen}
-              options={{ 
-                headerShown: false,
-                contentStyle: { backgroundColor: 'white' }
-              }}
-            />
-            <Stack.Screen 
-              name="TestChat"
-              component={TestChatScreen}
-              options={{ 
-                headerShown: false,
-                contentStyle: { backgroundColor: 'white' }
-              }}
-            />
-            <Stack.Screen 
-              name="ChannelTest"
-              component={ChannelTestScreen}
               options={{ 
                 headerShown: false,
                 contentStyle: { backgroundColor: 'white' }

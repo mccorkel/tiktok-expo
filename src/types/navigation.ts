@@ -1,6 +1,7 @@
-export type RootTabParamList = {
-  Home: undefined;
+export type RootStackParamList = {
   Browse: undefined;
   Following: undefined;
-  Profile: { signOut: () => void };
+  Profile: undefined;
+  GoLive: undefined;
+  StreamDetails: { streamId: string };
 }; 

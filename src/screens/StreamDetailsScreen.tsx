@@ -59,7 +59,6 @@ export default function StreamDetailsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
   const streamId = (route.params as any)?.streamId;
-  const [isInPipMode, setIsInPipMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -135,7 +134,6 @@ export default function StreamDetailsScreen() {
         setIsMuted(false);
         // Try to enter PIP mode
         await playerRef.current.togglePip();
-        setIsInPipMode(true);
         console.log('[PIP] Successfully entered PIP mode');
       } catch (err) {
         console.error('[PIP] Failed to enter PIP mode on background:', err);
@@ -288,28 +286,12 @@ export default function StreamDetailsScreen() {
     }, 1000); // Changed from 3000 to 1000 for 1 second timeout
   };
 
-  const handleDisclosurePress = async () => {
+  const handleDisclosurePress = () => {
     // Clear the controls timeout when leaving the screen
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
     }
-    console.log('[PIP] Disclosure button pressed');
-    if (playerRef.current) {
-      try {
-        console.log('[PIP] Attempting to enter PIP mode');
-        await playerRef.current.togglePip();
-        console.log('[PIP] Successfully entered PIP mode, navigating to Browse');
-        navigation.navigate('Browse');
-      } catch (err) {
-        console.error('[PIP] Failed to enter PIP mode:', err);
-        // Fallback to just navigation if PIP fails
-        console.log('[PIP] Falling back to normal navigation');
-        navigation.navigate('Browse');
-      }
-    } else {
-      console.warn('[PIP] Player reference not available for PIP');
-      navigation.navigate('Browse');
-    }
+    navigation.navigate('Browse');
   };
 
   const togglePip = () => {
@@ -393,14 +375,6 @@ export default function StreamDetailsScreen() {
                 quality={selectedQuality}
                 resizeMode={isFullscreen ? "aspectFit" : "aspectFill"}
                 liveLowLatency={true}
-                onPipChange={(isInPip: boolean) => {
-                  console.log('[PIP] PIP state changed:', { isInPip });
-                  setIsInPipMode(isInPip);
-                  if (isInPip && playerRef.current) {
-                    setIsMuted(false);
-                    playerRef.current.play();
-                  }
-                }}
                 onDurationChange={(duration: number | null) => {
                   if (duration !== null) {
                     setDuration(duration);
@@ -414,10 +388,7 @@ export default function StreamDetailsScreen() {
                   
                   // Handle disconnection states
                   if (state === 'Idle' || state === 'Error') {
-                    if (isInPipMode && playerRef.current) {
-                      console.log('[Player] Attempting to restart stream in PIP mode');
-                      playerRef.current.play();
-                    } else if (state === 'Error') {
+                    if (state === 'Error') {
                       setConnectionError('Stream connection lost. Attempting to reconnect...');
                       handleRetry();
                     }

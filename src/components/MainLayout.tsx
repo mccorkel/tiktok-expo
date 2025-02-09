@@ -22,34 +22,26 @@ type MainLayoutProps = {
 };
 
 const TAB_COLORS = {
-  home: '#007AFF',     // Blue for home
   browse: '#34C759',   // Green for browse
   following: '#FF3B30', // Red for following
   profile: '#AF52DE',  // Purple for profile
-  golive: '#FF9500',   // Orange for go live
-  testchat: '#5856D6', // Indigo for test chat
-  channeltest: '#FF2D55' // Pink for channel test
+  golive: '#FF9500'   // Orange for go live
 };
 
-const TABS = ['Home', 'Browse', 'Following', 'Profile', 'GoLive', 'TestChat', 'ChannelTest'] as const;
+const TABS = ['Browse', 'Following', 'Profile', 'GoLive'] as const;
 type TabName = typeof TABS[number];
 
 const TAB_LABELS: Record<TabName, string> = {
-  Home: 'Home',
   Browse: 'Browse',
   Following: 'Following',
   Profile: 'Profile',
-  GoLive: 'GoLive',
-  TestChat: 'TestChat',
-  ChannelTest: 'Ch. Test'
+  GoLive: 'GoLive'
 };
 
 type IconName = keyof typeof Ionicons['glyphMap'];
 
 function getIconName(route: TabName, focused: boolean): IconName {
   switch (route) {
-    case 'Home':
-      return focused ? 'home' : 'home-outline';
     case 'Browse':
       return focused ? 'compass' : 'compass-outline';
     case 'Following':
@@ -58,10 +50,6 @@ function getIconName(route: TabName, focused: boolean): IconName {
       return focused ? 'person' : 'person-outline';
     case 'GoLive':
       return focused ? 'radio' : 'radio-outline';
-    case 'TestChat':
-      return focused ? 'chatbubbles' : 'chatbubbles-outline';
-    case 'ChannelTest':
-      return focused ? 'tv' : 'tv-outline';
     default:
       return 'help-outline';
   }
