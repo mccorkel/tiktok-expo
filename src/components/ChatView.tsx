@@ -130,7 +130,8 @@ export default function ChatView({ channel, onBack, showHeader = true, isFullscr
         styles.container,
         isFullscreen && styles.containerFullscreen
       ]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={isFullscreen ? undefined : (Platform.OS === 'ios' ? 'padding' : undefined)}
+      keyboardVerticalOffset={isFullscreen ? 0 : Platform.OS === 'ios' ? 64 : 0}
     >
       {showHeader && (
         <View style={styles.header}>
@@ -213,6 +214,8 @@ const styles = StyleSheet.create({
   },
   containerFullscreen: {
     backgroundColor: 'transparent',
+    position: 'relative',
+    height: '100%',
   },
   header: {
     flexDirection: 'row',
@@ -249,6 +252,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#eee',
     backgroundColor: '#fff',
+    minHeight: 60,
+    maxHeight: 60,
+  },
+  inputContainerFullscreen: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   input: {
     flex: 1,
@@ -257,7 +270,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 8,
     marginRight: 10,
-    maxHeight: 100,
+    maxHeight: 40,
   },
   errorContainer: {
     backgroundColor: 'rgba(255, 59, 48, 0.1)',
@@ -296,10 +309,6 @@ const styles = StyleSheet.create({
   },
   textWhite: {
     color: '#fff',
-  },
-  inputContainerFullscreen: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
   inputFullscreen: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',

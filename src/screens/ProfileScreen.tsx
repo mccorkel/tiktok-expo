@@ -24,7 +24,9 @@ type RootStackParamList = {
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type ProfileScreenRouteProp = RouteProp<RootStackParamList, 'Profile'>;
 
-type Profile = Schema['Profile']['type'];
+type Profile = Schema['Profile']['type'] & {
+  followerCount?: number;
+};
 
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -36,10 +38,43 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     loadProfile();
+
+    // Get current user ID for subscription filtering
+    getCurrentUser().then(user => {
+      console.log('Setting up follow subscription for user:', user.userId);
+      
+      // Subscribe to follow changes that affect this user
+      const sub = client.models.Follow.observeQuery({
+        filter: {
+          or: [
+            { followerId: { eq: user.userId } },
+            { followeeId: { eq: user.userId } }
+          ]
+        }
+      }).subscribe({
+        next: ({ items }) => {
+          console.log('Follow change detected:', {
+            followCount: items.length,
+            items: items.map(f => ({ 
+              followerId: f.followerId, 
+              followeeId: f.followeeId 
+            }))
+          });
+          loadProfile();
+        },
+        error: (err) => console.error('Follow subscription error:', err)
+      });
+
+      return () => {
+        console.log('Cleaning up follow subscription');
+        sub.unsubscribe();
+      };
+    });
   }, []);
 
   const loadProfile = async () => {
     try {
+      console.log('Loading profile data...');
       setIsLoading(true);
       setError(null);
 
@@ -51,8 +86,23 @@ export default function ProfileScreen() {
       });
 
       if (profiles.length > 0) {
-        setProfile(profiles[0]);
+        const profile = profiles[0];
+        console.log('Found profile:', profile.id);
+        
+        // Count followers (where this profile is the followee)
+        const { data: followers } = await client.models.Follow.list({
+          filter: {
+            followeeId: { eq: profile.id }
+          }
+        });
+        console.log('Follower count:', followers.length);
+
+        setProfile({
+          ...profile,
+          followerCount: followers.length
+        });
       } else {
+        console.log('No profile found');
         setError('Profile not found');
       }
     } catch (err) {
@@ -107,34 +157,8 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.label}>Followers:</Text>
-            <Text style={styles.value}>{profile.followers}</Text>
+            <Text style={styles.value}>{profile.followerCount}</Text>
           </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.label}>Following:</Text>
-            <Text style={styles.value}>{profile.following}</Text>
-          </View>
-        </View>
-
-        {/* Streaming Status */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Streaming Status</Text>
-          <View style={styles.infoItem}>
-            <Text style={styles.label}>Live Status:</Text>
-            <Text style={[
-              styles.value,
-              profile.isLive ? styles.liveStatus : styles.offlineStatus
-            ]}>
-              {profile.isLive ? 'LIVE' : 'Offline'}
-            </Text>
-          </View>
-          {profile.lastStreamedAt && (
-            <View style={styles.infoItem}>
-              <Text style={styles.label}>Last Streamed:</Text>
-              <Text style={styles.value}>
-                {new Date(profile.lastStreamedAt).toLocaleString()}
-              </Text>
-            </View>
-          )}
         </View>
 
         {/* IVS Channel Info */}
@@ -249,13 +273,6 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 16,
     color: '#000',
-  },
-  liveStatus: {
-    color: '#34C759',
-    fontWeight: 'bold',
-  },
-  offlineStatus: {
-    color: '#8E8E93',
   },
   streamKeyContainer: {
     flexDirection: 'row',

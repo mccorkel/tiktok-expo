@@ -240,7 +240,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         requestId: Date.now().toString(),
         attributes: {
           senderId: user.userId,
-          displayName,
+          displayName: displayName || 'Anonymous',
           clientTimestamp: Date.now().toString()
         }
       });

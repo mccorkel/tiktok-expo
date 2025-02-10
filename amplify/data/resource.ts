@@ -20,8 +20,6 @@ const schema = a.schema({
       displayName: a.string(),
       bio: a.string(),
       avatarUrl: a.string(),
-      followers: a.integer(),
-      following: a.integer(),
       channelArn: a.string(),
       streamKeyArn: a.string(),
       streamKeyValue: a.string(),
@@ -29,9 +27,16 @@ const schema = a.schema({
       ingestEndpoint: a.string(),
       playbackUrl: a.string(),
       isLive: a.boolean(),
-      lastStreamedAt: a.string()
+      lastStreamedAt: a.string(),
+      receivedFollows: a.hasMany('Follow', 'followeeId'),
+      givenFollows: a.hasMany('Follow', 'followerId')
     })
-    .authorization(allow => [allow.owner()]),
+    .authorization(allow => [
+      // All authenticated users can read profiles
+      allow.authenticated().to(['read']),
+      // Only owner can create/update/delete their own profile
+      allow.owner().to(['create', 'update', 'delete'])
+    ]),
 
   ChatMessage: a
     .model({
@@ -52,6 +57,17 @@ const schema = a.schema({
         .to(['create', 'update', 'delete'])
     ]),
 
+  Follow: a
+    .model({
+      followerId: a.string(),
+      followeeId: a.string(),
+      follower: a.belongsTo('Profile', 'followerId'),
+      followee: a.belongsTo('Profile', 'followeeId')
+    })
+    .authorization(allow => [
+      allow.authenticated().to(['read']),
+      allow.owner().to(['create', 'delete'])
+    ]),
     
   // Removed ChatRoom model since we're using IVS stack's chat room
 });

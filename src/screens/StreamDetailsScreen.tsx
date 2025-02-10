@@ -23,6 +23,7 @@ import ChatView from '../components/ChatView';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import FollowButton from '../components/FollowButton';
 
 type RootStackParamList = {
   Home: undefined;
@@ -35,13 +36,18 @@ type RootStackParamList = {
   StreamDetails: { streamId: string };
 };
 
+type Profile = Schema['Profile']['type'] & {
+  followerCount?: number;
+  followingCount?: number;
+};
+
 const client = generateClient<Schema>();
 const ivsService = new IVSService();
 const { width, height } = Dimensions.get('window');
 const PLAYER_HEIGHT = width * (9/16); // 16:9 aspect ratio
 
 export default function StreamDetailsScreen() {
-  const [stream, setStream] = useState<Schema['Profile']['type'] | null>(null);
+  const [stream, setStream] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
@@ -115,37 +121,17 @@ export default function StreamDetailsScreen() {
 
   // Add AppState listener for background state
   useEffect(() => {
-    console.log('[PIP] Setting up AppState listener');
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => {
-      console.log('[PIP] Cleaning up AppState listener');
       subscription.remove();
     };
   }, []);
 
   const handleAppStateChange = async (nextAppState: AppStateStatus) => {
-    console.log('[PIP] App state changed:', { nextAppState });
-    
-    // When app goes to background and we're on stream details screen
-    if (nextAppState === 'background' && stream?.isLive && playerRef.current) {
-      console.log('[PIP] App going to background with active stream, attempting PIP');
-      try {
-        // Ensure we're not muted when entering PIP
-        setIsMuted(false);
-        // Try to enter PIP mode
-        await playerRef.current.togglePip();
-        console.log('[PIP] Successfully entered PIP mode');
-      } catch (err) {
-        console.error('[PIP] Failed to enter PIP mode on background:', err);
-      }
-    } else if (nextAppState === 'active' && isInPipMode) {
-      console.log('[PIP] App returning to foreground, exiting PIP mode');
-      try {
-        await playerRef.current?.togglePip();
-        setIsInPipMode(false);
-      } catch (err) {
-        console.error('[PIP] Failed to exit PIP mode:', err);
-      }
+    // When app goes to background, pause the player
+    if (nextAppState === 'background' && playerRef.current) {
+      playerRef.current.pause();
+      setIsPaused(true);
     }
   };
 
@@ -197,6 +183,20 @@ export default function StreamDetailsScreen() {
         return;
       }
 
+      // Count followers (where this profile is the followee)
+      const { data: followers } = await client.models.Follow.list({
+        filter: {
+          followeeId: { eq: profile.id }
+        }
+      });
+
+      // Count following (where this profile is the follower)
+      const { data: following } = await client.models.Follow.list({
+        filter: {
+          followerId: { eq: profile.id }
+        }
+      });
+
       let isActuallyLive = false;
       try {
         if (profile.channelArn) {
@@ -209,7 +209,9 @@ export default function StreamDetailsScreen() {
       
       const updatedProfile = {
         ...profile,
-        isLive: isActuallyLive
+        isLive: isActuallyLive,
+        followerCount: followers.length,
+        followingCount: following.length
       };
 
       setStream(updatedProfile);
@@ -499,13 +501,25 @@ export default function StreamDetailsScreen() {
         </View>
 
         <View style={styles.detailsContainer}>
-          <Text style={styles.streamTitle}>{stream.displayName}</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.streamTitle}>{stream.displayName}</Text>
+            <FollowButton 
+              profileId={stream.id} 
+              onFollowChange={async (isFollowing) => {
+                // Update follower count in UI only
+                setStream(prev => prev ? {
+                  ...prev,
+                  followerCount: (prev.followerCount ?? 0) + (isFollowing ? 1 : -1)
+                } : null);
+              }}
+            />
+          </View>
           {stream.bio && (
             <Text style={styles.bio}>{stream.bio}</Text>
           )}
           <View style={styles.statsContainer}>
             <Text style={styles.statsText}>
-              {stream.followers} followers • {stream.following} following
+              {stream.followerCount} followers • {stream.followingCount} following
             </Text>
           </View>
         </View>
@@ -618,15 +632,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
   streamTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 5,
   },
   bio: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 5,
   },
   statsContainer: {
     flexDirection: 'row',

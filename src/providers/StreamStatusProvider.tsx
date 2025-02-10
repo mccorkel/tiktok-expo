@@ -30,13 +30,48 @@ export function StreamStatusProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     const fetchProfiles = async () => {
       try {
+        setIsLoading(true);
         const { data } = await client.models.Profile.list();
-        setProfiles(data.filter(profile => profile.channelArn));
+        
+        // Only keep profiles that have a channelArn
+        const validProfiles = data.filter(profile => profile.channelArn);
+        console.log('All profiles:', data.length);
+        console.log('Valid profiles with channels:', validProfiles.length);
+        console.log('Profile details:', validProfiles.map(p => ({ 
+          displayName: p.displayName, 
+          channelArn: p.channelArn,
+          userId: p.userId
+        })));
+        setProfiles(validProfiles);
       } catch (err) {
         console.error('Error fetching profiles:', err);
+        setError('Failed to fetch profiles');
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchProfiles();
+
+    // Set up subscription for new profiles
+    const sub = client.models.Profile.observeQuery().subscribe({
+      next: ({ items }) => {
+        const validProfiles = items.filter(profile => profile.channelArn);
+        console.log('Profile subscription update:');
+        console.log('- Total profiles:', items.length);
+        console.log('- Profiles with channels:', validProfiles.length);
+        console.log('- Profile details:', validProfiles.map(p => ({ 
+          displayName: p.displayName, 
+          channelArn: p.channelArn,
+          userId: p.userId
+        })));
+        setProfiles(validProfiles);
+      },
+      error: (err) => console.error('Profile subscription error:', err)
+    });
+
+    return () => {
+      sub.unsubscribe();
+    };
   }, []);
 
   // Memoize the check channel status function
@@ -55,23 +90,49 @@ export function StreamStatusProvider({ children }: { children: React.ReactNode }
       setError(null);
       
       if (profiles.length === 0) {
-        console.log('No valid channels found to check');
+        console.log('No profiles found to check. Waiting for profiles to be loaded...');
         return;
       }
 
+      console.log('Starting channel status check:');
+      console.log('- Total profiles to check:', profiles.length);
+      console.log('- Profile list:', profiles.map(p => ({ 
+        displayName: p.displayName, 
+        channelArn: p.channelArn 
+      })));
+      
       // Check all channels in parallel
       const results = await Promise.all(
-        profiles.map(checkChannelStatus)
+        profiles.map(async profile => {
+          try {
+            console.log(`Checking channel for ${profile.displayName}...`);
+            const isLive = await ivsService.checkChannelLiveStatus(profile.channelArn!);
+            console.log(`Channel status for ${profile.displayName}: ${isLive ? 'LIVE' : 'offline'}`);
+            return { profile, isLive };
+          } catch (err) {
+            console.error(`Error checking channel ${profile.channelArn} for ${profile.displayName}:`, err);
+            return { profile, isLive: false };
+          }
+        })
       );
 
-      // Update live channels state by comparing with current state
-      setLiveChannels(prevLiveChannels => {
-        const newLiveChannels = results
-          .filter(result => result.isLive)
-          .map(result => result.profile);
+      // Update live channels state
+      const newLiveChannels = results
+        .filter(result => result.isLive)
+        .map(result => result.profile);
 
+      console.log('Channel status check complete:');
+      console.log('- Total channels checked:', results.length);
+      console.log('- Live channels found:', newLiveChannels.length);
+      console.log('- Live channel details:', newLiveChannels.map(p => ({ 
+        displayName: p.displayName, 
+        channelArn: p.channelArn 
+      })));
+      
+      setLiveChannels(prevLiveChannels => {
         // Only update state if there's an actual change
         if (JSON.stringify(prevLiveChannels) !== JSON.stringify(newLiveChannels)) {
+          console.log('Updating live channels state');
           return newLiveChannels;
         }
         return prevLiveChannels;
@@ -80,7 +141,7 @@ export function StreamStatusProvider({ children }: { children: React.ReactNode }
       console.error('Error checking channel statuses:', err);
       setError('Failed to check channel statuses');
     }
-  }, [profiles, checkChannelStatus]);
+  }, [profiles]);
 
   // Set up polling
   useEffect(() => {

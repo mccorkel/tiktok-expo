@@ -9,24 +9,29 @@ const ivsService = new IVSService();
 export class ProfileService {
   async createProfile(displayName: string): Promise<Schema['Profile']['type']> {
     try {
+      console.log('Starting profile creation for:', displayName);
       const user = await getCurrentUser();
+      console.log('Got current user:', user.userId);
       
       // Create IVS channel
       const channel = await ivsService.createChannel(displayName, {
         userId: user.userId,
         createdAt: new Date().toISOString()
       });
+      console.log('Created IVS channel:', channel.arn);
 
       // Try to create stream key or get existing one
       let streamKey;
       try {
         streamKey = await ivsService.createStreamKey(channel.arn);
+        console.log('Created new stream key');
       } catch (err: any) {
         if (err?.name === 'ServiceQuotaExceededException') {
           // If quota exceeded, try to get existing stream keys
           const existingKeys = await ivsService.listStreamKeys(channel.arn);
           if (existingKeys.length > 0) {
             streamKey = existingKeys[0];
+            console.log('Using existing stream key');
           } else {
             throw new Error('No stream keys available and cannot create new ones');
           }
@@ -40,15 +45,14 @@ export class ProfileService {
         userId: user.userId,
         createdAt: new Date().toISOString()
       });
+      console.log('Created chat room:', chatRoom.arn);
 
       // Create profile with IVS resources
-      const profile = await client.models.Profile.create({
+      const { data: profile } = await client.models.Profile.create({
         userId: user.userId,
         displayName,
         bio: '',
         avatarUrl: '',
-        followers: 0,
-        following: 0,
         channelArn: channel.arn,
         streamKeyArn: streamKey.arn,
         streamKeyValue: streamKey.value,
@@ -59,6 +63,11 @@ export class ProfileService {
         lastStreamedAt: null
       });
 
+      if (!profile) {
+        throw new Error('Failed to create profile');
+      }
+
+      console.log('Created profile:', profile.id);
       return profile;
     } catch (error) {
       console.error('Error creating profile:', error);
@@ -91,10 +100,14 @@ export class ProfileService {
         throw new Error('Profile not found');
       }
 
-      const updatedProfile = await client.models.Profile.update({
+      const { data: updatedProfile } = await client.models.Profile.update({
         id: profile.id,
         ...updates
       });
+
+      if (!updatedProfile) {
+        throw new Error('Failed to update profile');
+      }
 
       return updatedProfile;
     } catch (error) {
