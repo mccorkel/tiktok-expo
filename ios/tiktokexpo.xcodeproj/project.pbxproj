@@ -10,12 +10,12 @@
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
-		3AF1AAA4BD0F592DF3F72088 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 60DB314057B7A31B3E840E17 /* PrivacyInfo.xcprivacy */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
+		89175C3A8DDF41F6A81CA8BC /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81610AE296F146EAAEFE4893 /* noop-file.swift */; };
 		96905EF65AED1B983A6B3ABC /* libPods-tiktokexpo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-tiktokexpo.a */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		BC815C7587C54B5C949BC424 /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 208F206FA88242E499ED51C8 /* noop-file.swift */; };
+		CE626F6100D072422A398E74 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = BFCA563B4C0F2B4C7B0F0D27 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,14 +25,14 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = tiktokexpo/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = tiktokexpo/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = tiktokexpo/main.m; sourceTree = "<group>"; };
-		208F206FA88242E499ED51C8 /* noop-file.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = "noop-file.swift"; path = "tiktokexpo/noop-file.swift"; sourceTree = "<group>"; };
+		280068A142A54E8EB955D0EE /* tiktokexpo-Bridging-Header.h */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; name = "tiktokexpo-Bridging-Header.h"; path = "tiktokexpo/tiktokexpo-Bridging-Header.h"; sourceTree = "<group>"; };
 		58EEBF8E8E6FB1BC6CAF49B5 /* libPods-tiktokexpo.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-tiktokexpo.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		60DB314057B7A31B3E840E17 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = tiktokexpo/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		6C2E3173556A471DD304B334 /* Pods-tiktokexpo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-tiktokexpo.debug.xcconfig"; path = "Target Support Files/Pods-tiktokexpo/Pods-tiktokexpo.debug.xcconfig"; sourceTree = "<group>"; };
 		7A4D352CD337FB3A3BF06240 /* Pods-tiktokexpo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-tiktokexpo.release.xcconfig"; path = "Target Support Files/Pods-tiktokexpo/Pods-tiktokexpo.release.xcconfig"; sourceTree = "<group>"; };
+		81610AE296F146EAAEFE4893 /* noop-file.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = "noop-file.swift"; path = "tiktokexpo/noop-file.swift"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = tiktokexpo/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C9907312F27147359ADA4BDB /* tiktokexpo-Bridging-Header.h */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; name = "tiktokexpo-Bridging-Header.h"; path = "tiktokexpo/tiktokexpo-Bridging-Header.h"; sourceTree = "<group>"; };
+		BFCA563B4C0F2B4C7B0F0D27 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = tiktokexpo/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-tiktokexpo/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -59,9 +59,9 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				13B07FB71A68108700A75B9A /* main.m */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				208F206FA88242E499ED51C8 /* noop-file.swift */,
-				C9907312F27147359ADA4BDB /* tiktokexpo-Bridging-Header.h */,
-				60DB314057B7A31B3E840E17 /* PrivacyInfo.xcprivacy */,
+				81610AE296F146EAAEFE4893 /* noop-file.swift */,
+				280068A142A54E8EB955D0EE /* tiktokexpo-Bridging-Header.h */,
+				BFCA563B4C0F2B4C7B0F0D27 /* PrivacyInfo.xcprivacy */,
 			);
 			name = tiktokexpo;
 			sourceTree = "<group>";
@@ -147,13 +147,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "tiktokexpo" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				F10631010627FD683C745E98 /* [Expo] Configure project */,
+				68E6847796D3B6ED11D79426 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				4389CEC8B5FFB249FD630969 /* [CP] Embed Pods Frameworks */,
+				83DEFC3F3608A2B23691D9E1 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -203,7 +203,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				3AF1AAA4BD0F592DF3F72088 /* PrivacyInfo.xcprivacy in Resources */,
+				CE626F6100D072422A398E74 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -247,25 +247,24 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		4389CEC8B5FFB249FD630969 /* [CP] Embed Pods Frameworks */ = {
+		68E6847796D3B6ED11D79426 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-tiktokexpo/Pods-tiktokexpo-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/AmazonIVSPlayer/AmazonIVSPlayer.framework/AmazonIVSPlayer",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			inputFileListPaths = (
 			);
-			name = "[CP] Embed Pods Frameworks";
+			inputPaths = (
+			);
+			name = "[Expo] Configure project";
+			outputFileListPaths = (
+			);
 			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/AmazonIVSPlayer.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-tiktokexpo/Pods-tiktokexpo-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-tiktokexpo/expo-configure-project.sh\"\n";
 		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -303,24 +302,25 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-tiktokexpo/Pods-tiktokexpo-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		F10631010627FD683C745E98 /* [Expo] Configure project */ = {
+		83DEFC3F3608A2B23691D9E1 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
-			inputFileListPaths = (
-			);
 			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-tiktokexpo/Pods-tiktokexpo-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/AmazonIVSPlayer/AmazonIVSPlayer.framework/AmazonIVSPlayer",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
 			);
-			name = "[Expo] Configure project";
-			outputFileListPaths = (
-			);
+			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/AmazonIVSPlayer.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-tiktokexpo/expo-configure-project.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-tiktokexpo/Pods-tiktokexpo-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -332,7 +332,7 @@
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,
-				BC815C7587C54B5C949BC424 /* noop-file.swift in Sources */,
+				89175C3A8DDF41F6A81CA8BC /* noop-file.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -363,7 +363,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.anonymous.tiktokexpo;
-				PRODUCT_NAME = "tiktokexpo";
+				PRODUCT_NAME = tiktokexpo;
 				SWIFT_OBJC_BRIDGING_HEADER = "tiktokexpo/tiktokexpo-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -391,7 +391,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.anonymous.tiktokexpo;
-				PRODUCT_NAME = "tiktokexpo";
+				PRODUCT_NAME = tiktokexpo;
 				SWIFT_OBJC_BRIDGING_HEADER = "tiktokexpo/tiktokexpo-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
