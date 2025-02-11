@@ -29,12 +29,51 @@ const schema = a.schema({
       isLive: a.boolean(),
       lastStreamedAt: a.string(),
       receivedFollows: a.hasMany('Follow', 'followeeId'),
-      givenFollows: a.hasMany('Follow', 'followerId')
+      givenFollows: a.hasMany('Follow', 'followerId'),
+      streamSessions: a.hasMany('StreamSession', 'profileId'),
+      recordings: a.hasMany('Recording', 'profileId')
     })
     .authorization(allow => [
       // All authenticated users can read profiles
       allow.authenticated().to(['read']),
       // Only owner can create/update/delete their own profile
+      allow.owner().to(['create', 'update', 'delete'])
+    ]),
+
+  StreamSession: a
+    .model({
+      profileId: a.string(),
+      profile: a.belongsTo('Profile', 'profileId'),
+      streamId: a.string(),
+      startTime: a.string(),
+      endTime: a.string(),
+      status: a.enum(['LIVE', 'ENDED', 'FAILED']),
+      recordings: a.hasMany('Recording', 'streamSessionId'),
+      viewerCount: a.integer(),
+      duration: a.integer() // in seconds
+    })
+    .authorization(allow => [
+      allow.authenticated().to(['read']),
+      allow.owner().to(['create', 'update', 'delete'])
+    ]),
+
+  Recording: a
+    .model({
+      profileId: a.string(),
+      profile: a.belongsTo('Profile', 'profileId'),
+      streamSessionId: a.string(),
+      streamSession: a.belongsTo('StreamSession', 'streamSessionId'),
+      recordingStatus: a.enum(['STARTED', 'COMPLETED', 'FAILED']),
+      recordingStatusReason: a.string(),
+      s3BucketName: a.string(),
+      s3KeyPrefix: a.string(),
+      recordingDurationMs: a.integer(),
+      recordingSessionId: a.string(),
+      startTime: a.string(),
+      endTime: a.string()
+    })
+    .authorization(allow => [
+      allow.authenticated().to(['read']),
       allow.owner().to(['create', 'update', 'delete'])
     ]),
 
