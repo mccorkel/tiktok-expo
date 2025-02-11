@@ -30,6 +30,9 @@ jobs:
       - name: Install Expo CLI and EAS CLI
         run: npm install -g expo-cli eas-cli
 
+      - name: Fetch Amplify Outputs
+        run: curl -o amplify_outputs.json https://s3.us-west-2.amazonaws.com/tigerpanda.tv/amplify_outputs.json
+
       - name: Run EAS local build
         run: EXPO_TOKEN=${{ secrets.EXPO_TOKEN }} eas build --platform android --local
 
