@@ -5,14 +5,38 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "gradleCommand": ":app:assembleDebug",
+        "env": {
+          "android.kotlinVersion": "1.9.25",
+          "EXPO_BUILD_KOTLIN_VERSION": "1.9.25"
+        },
+        "image": "latest"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "gradleCommand": ":app:assembleRelease",
+        "env": {
+          "android.kotlinVersion": "1.9.25",
+          "EXPO_BUILD_KOTLIN_VERSION": "1.9.25"
+        },
+        "image": "latest"
+      }
     },
     "production": {
       "ios": {
         "resourceClass": "m-medium"
+      },
+      "android": {
+        "gradleCommand": ":app:bundleRelease",
+        "env": {
+          "android.kotlinVersion": "1.9.25",
+          "EXPO_BUILD_KOTLIN_VERSION": "1.9.25"
+        },
+        "image": "latest"
       }
     }
   },
