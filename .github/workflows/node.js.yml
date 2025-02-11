@@ -30,11 +30,8 @@ jobs:
       - name: Install Expo CLI and EAS CLI
         run: npm install -g expo-cli eas-cli
 
-      - name: Authenticate with EAS
-        run: echo "EAS_ACCESS_TOKEN=${{ secrets.EAS_ACCESS_TOKEN }}" >> $GITHUB_ENV
-
       - name: Run EAS local build
-        run: eas build --platform android --local
+        run: EXPO_TOKEN=${{ secrets.EXPO_TOKEN }} eas build --platform android --local
 
       - name: Submit Build to Google Play
-        run: eas submit --platform android --path ./builds/app.aab
+        run: EXPO_TOKEN=${{ secrets.EXPO_TOKEN }} eas submit --platform android --path ./builds/app.aab
