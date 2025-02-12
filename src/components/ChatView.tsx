@@ -1,19 +1,16 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
-  ScrollView, 
   TouchableOpacity,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  Button
+  Platform
 } from 'react-native';
 import { useChat } from '../providers/ChatProvider';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { Ionicons } from '@expo/vector-icons';
-import { ivsConfig } from '../config/ivs';
+import ChatMessages from './ChatMessages';
+import ChatInput from './ChatInput';
 
 type ChatViewProps = {
   channel: {
@@ -26,22 +23,15 @@ type ChatViewProps = {
 };
 
 export default function ChatView({ channel, onBack, showHeader = true, isFullscreen }: ChatViewProps) {
-  const [message, setMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const { joinRoom, sendMessage, messages, isConnected, loadRecentMessages } = useChat();
-  const scrollViewRef = useRef<ScrollView>(null);
+  const { joinRoom, isConnected } = useChat();
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 3000; // 3 seconds
-  const retryTimeoutRef = useRef<NodeJS.Timeout>();
+  const retryTimeoutRef = React.useRef<NodeJS.Timeout>();
 
   useEffect(() => {
-    console.log('Connecting to channel:', {
-      channelArn: ivsConfig.channelArn,
-      chatRoomArn: ivsConfig.chatRoomArn,
-      playbackUrl: ivsConfig.playbackUrl
-    });
     connectToChannel();
 
     return () => {
@@ -92,47 +82,11 @@ export default function ChatView({ channel, onBack, showHeader = true, isFullscr
     }
   };
 
-  const handleSend = async () => {
-    if (!isConnected) {
-      setConnectionError('Not connected to chat. Attempting to reconnect...');
-      await handleRetry();
-      return;
-    }
-
-    try {
-      await sendMessage(message);
-      setMessage('');
-      setError(null);
-      setConnectionError(null);
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      if (error instanceof Error && error.message.includes('Network')) {
-        setConnectionError('Network error. Message not sent. Retrying connection...');
-        handleRetry();
-      } else {
-        setError('Failed to send message');
-      }
-    }
-  };
-
-  // Create a map of unique messages based on id and content
-  const uniqueMessages = messages.reduce((acc, msg) => {
-    const key = `${msg.id}-${msg.content}`;
-    if (!acc.has(key)) {
-      acc.set(key, msg);
-    }
-    return acc;
-  }, new Map());
-
   return (
-    <KeyboardAvoidingView 
-      style={[
-        styles.container,
-        isFullscreen && styles.containerFullscreen
-      ]}
-      behavior={isFullscreen ? undefined : (Platform.OS === 'ios' ? 'padding' : undefined)}
-      keyboardVerticalOffset={isFullscreen ? 0 : Platform.OS === 'ios' ? 64 : 0}
-    >
+    <View style={[
+      styles.container,
+      isFullscreen && styles.containerFullscreen
+    ]}>
       {showHeader && (
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack}>
@@ -150,30 +104,9 @@ export default function ChatView({ channel, onBack, showHeader = true, isFullscr
         </View>
       )}
       
-      <ScrollView 
-        ref={scrollViewRef}
-        style={[styles.messages, !showHeader && styles.messagesNoHeader]}
-        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd()}
-      >
-        {Array.from(uniqueMessages.values()).map((msg) => (
-          <View key={`${msg.id}-${msg.content}`} style={[
-            styles.message,
-            isFullscreen && styles.messageFullscreen
-          ]}>
-            <Text style={[styles.sender, isFullscreen && styles.textWhite]}>
-              {msg.attributes.displayName || 
-                (msg.attributes.senderId ? 
-                  `Guest${msg.attributes.senderId.slice(-5)}` : 
-                  'Guest'
-                )
-              }:
-            </Text>
-            <Text style={[styles.content, isFullscreen && styles.textWhite]}>
-              {msg.content}
-            </Text>
-          </View>
-        ))}
-      </ScrollView>
+      <View style={styles.messagesContainer}>
+        <ChatMessages isFullscreen={isFullscreen} />
+      </View>
 
       {(error || connectionError) && (
         <View style={styles.errorContainer}>
@@ -189,33 +122,18 @@ export default function ChatView({ channel, onBack, showHeader = true, isFullscr
         </View>
       )}
 
-      <View style={[styles.inputContainer, isFullscreen && styles.inputContainerFullscreen]}>
-        <TextInput
-          style={[styles.input, isFullscreen && styles.inputFullscreen]}
-          value={message}
-          onChangeText={setMessage}
-          placeholder="Type a message..."
-          placeholderTextColor={isFullscreen ? "#999" : "#666"}
-          editable={isConnected && !connectionError}
-        />
-        <Button 
-          title="Send" 
-          onPress={handleSend}
-          disabled={!isConnected || !message.trim() || Boolean(connectionError)}
-        />
-      </View>
-    </KeyboardAvoidingView>
+      <ChatInput isFullscreen={isFullscreen} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#fff',
   },
   containerFullscreen: {
     backgroundColor: 'transparent',
-    position: 'relative',
-    height: '100%',
   },
   header: {
     flexDirection: 'row',
@@ -228,90 +146,36 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 16,
-  },
-  messages: {
-    flex: 1,
-    padding: 10,
-  },
-  message: {
-    padding: 10,
-    marginVertical: 5,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-  },
-  sender: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  content: {
-    fontSize: 16,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    padding: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fff',
-    minHeight: 60,
-    maxHeight: 60,
-  },
-  inputContainerFullscreen: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    marginRight: 10,
-    maxHeight: 40,
-  },
-  errorContainer: {
-    backgroundColor: 'rgba(255, 59, 48, 0.1)',
-    padding: 10,
-    marginHorizontal: 10,
-    marginBottom: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 5,
-  },
-  retryButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  status: {
-    marginLeft: 'auto',
-    fontWeight: 'bold',
-  },
-  messagesNoHeader: {
-    paddingTop: 0,
-  },
-  messageFullscreen: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    color: '#000',
   },
   textWhite: {
     color: '#fff',
   },
-  inputFullscreen: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  status: {
+    marginLeft: 'auto',
+    fontSize: 12,
+  },
+  messagesContainer: {
+    flex: 1,
+  },
+  errorContainer: {
+    padding: 10,
+    backgroundColor: '#ffebee',
+  },
+  errorText: {
+    color: '#d32f2f',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignSelf: 'center',
+  },
+  retryButtonText: {
     color: '#fff',
+    fontWeight: '600',
   },
 }); 

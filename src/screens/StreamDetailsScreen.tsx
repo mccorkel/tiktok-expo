@@ -11,7 +11,8 @@ import {
   SafeAreaView,
   TouchableOpacity,
   AppState,
-  AppStateStatus
+  AppStateStatus,
+  ViewStyle
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { generateClient } from 'aws-amplify/api';
@@ -44,7 +45,7 @@ type Profile = Schema['Profile']['type'] & {
 const client = generateClient<Schema>();
 const ivsService = new IVSService();
 const { width, height } = Dimensions.get('window');
-const PLAYER_HEIGHT = width * (9/16); // 16:9 aspect ratio
+const PLAYER_HEIGHT = width * (9/16); // Default 16:9 aspect ratio
 
 export default function StreamDetailsScreen() {
   const [stream, setStream] = useState<Profile | null>(null);
@@ -71,6 +72,9 @@ export default function StreamDetailsScreen() {
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 3000; // 3 seconds
   const retryTimeoutRef = useRef<NodeJS.Timeout>();
+  const [videoOrientation, setVideoOrientation] = useState<'portrait' | 'landscape'>('landscape');
+  const [videoWidth, setVideoWidth] = useState(0);
+  const [videoHeight, setVideoHeight] = useState(0);
 
   useEffect(() => {
     navigation.setOptions({
@@ -325,6 +329,28 @@ export default function StreamDetailsScreen() {
     };
   }, []);
 
+  const getVideoLayout = (): ViewStyle => {
+    if (videoOrientation === 'portrait') {
+      return {
+        width: width,
+        height: height,
+        backgroundColor: '#000'
+      };
+    }
+    return {
+      width: width,
+      height: PLAYER_HEIGHT,
+      backgroundColor: '#000'
+    };
+  };
+
+  const handleVideoSizeChange = (width: number, height: number) => {
+    console.log('Video size changed:', { width, height });
+    setVideoWidth(width);
+    setVideoHeight(height);
+    setVideoOrientation(height > width ? 'portrait' : 'landscape');
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -348,35 +374,44 @@ export default function StreamDetailsScreen() {
   return (
     <SafeAreaView style={[
       styles.container,
+      videoOrientation === 'portrait' && styles.portraitContainer,
       isFullscreen && { backgroundColor: '#000' }
     ]}>
-      <KeyboardAvoidingView 
-        style={[
-          styles.container,
-          isFullscreen && { backgroundColor: '#000' }
-        ]}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <View style={[
+        styles.container,
+        videoOrientation === 'portrait' && styles.portraitContainer,
+        isFullscreen && { backgroundColor: '#000' }
+      ]}>
         <View style={[
           styles.playerContainer,
+          videoOrientation === 'portrait' && styles.portraitPlayerContainer,
           isFullscreen && styles.playerContainerFullscreen
         ]}>
           {stream.isLive && stream.playbackUrl ? (
             <TouchableOpacity 
               activeOpacity={1} 
               onPress={showControlsTemporarily}
-              style={[styles.playerWrapper, isFullscreen && { width: '100%', height: '100%' }]}
+              style={[
+                styles.playerWrapper,
+                isFullscreen && { width: '100%', height: '100%' }
+              ]}
             >
               <IVSPlayer
                 ref={playerRef}
                 streamUrl={stream.playbackUrl}
-                style={styles.player}
+                style={getVideoLayout()}
                 autoplay={true}
                 muted={isMuted}
                 volume={volume}
                 quality={selectedQuality}
-                resizeMode={isFullscreen ? "aspectFit" : "aspectFill"}
+                resizeMode={videoOrientation === 'portrait' ? "aspectFill" : "aspectFit"}
                 liveLowLatency={true}
+                onData={(data) => {
+                  const selectedQuality = data.qualities[0];
+                  if (selectedQuality) {
+                    handleVideoSizeChange(selectedQuality.width, selectedQuality.height);
+                  }
+                }}
                 onDurationChange={(duration: number | null) => {
                   if (duration !== null) {
                     setDuration(duration);
@@ -500,47 +535,81 @@ export default function StreamDetailsScreen() {
           )}
         </View>
 
-        <View style={styles.detailsContainer}>
-          <View style={styles.titleRow}>
-            <Text style={styles.streamTitle}>{stream.displayName}</Text>
-            <FollowButton 
-              profileId={stream.id} 
-              onFollowChange={async (isFollowing) => {
-                // Update follower count in UI only
-                setStream(prev => prev ? {
-                  ...prev,
-                  followerCount: (prev.followerCount ?? 0) + (isFollowing ? 1 : -1)
-                } : null);
-              }}
-            />
-          </View>
-          {stream.bio && (
-            <Text style={styles.bio}>{stream.bio}</Text>
-          )}
-          <View style={styles.statsContainer}>
-            <Text style={styles.statsText}>
-              {stream.followerCount} followers • {stream.followingCount} following
-            </Text>
-          </View>
-        </View>
+        {videoOrientation === 'landscape' && (
+          <>
+            <View style={styles.detailsContainer}>
+              <View style={styles.titleRow}>
+                <Text style={styles.streamTitle}>{stream.displayName}</Text>
+                <FollowButton 
+                  profileId={stream.id} 
+                  onFollowChange={async (isFollowing) => {
+                    // Update follower count in UI only
+                    setStream(prev => prev ? {
+                      ...prev,
+                      followerCount: (prev.followerCount ?? 0) + (isFollowing ? 1 : -1)
+                    } : null);
+                  }}
+                />
+              </View>
+              {stream.bio && (
+                <Text style={styles.bio}>{stream.bio}</Text>
+              )}
+              <View style={styles.statsContainer}>
+                <Text style={styles.statsText}>
+                  {stream.followerCount} followers • {stream.followingCount} following
+                </Text>
+              </View>
+            </View>
 
-        {stream.chatRoomArn && stream.displayName && (
-          <View style={[
-            styles.chatContainer,
-            isFullscreen && styles.chatContainerFullscreen
-          ]}>
-            <ChatView 
-              channel={{
-                roomArn: stream.chatRoomArn,
-                displayName: stream.displayName
-              }}
-              onBack={() => navigation.goBack()}
-              showHeader={false}
-              isFullscreen={isFullscreen}
-            />
+            {stream.chatRoomArn && stream.displayName && (
+              <View style={[
+                styles.chatContainer,
+                isFullscreen && styles.chatContainerFullscreen
+              ]}>
+                <ChatView 
+                  channel={{
+                    roomArn: stream.chatRoomArn,
+                    displayName: stream.displayName
+                  }}
+                  onBack={() => navigation.goBack()}
+                  showHeader={false}
+                  isFullscreen={isFullscreen}
+                />
+              </View>
+            )}
+          </>
+        )}
+
+        {videoOrientation === 'portrait' && stream.chatRoomArn && stream.displayName && (
+          <View style={styles.portraitChatOverlay}>
+            <View style={styles.portraitHeader}>
+              <Text style={styles.portraitTitle} numberOfLines={1}>
+                {stream.displayName}
+              </Text>
+              <FollowButton 
+                profileId={stream.id} 
+                onFollowChange={async (isFollowing) => {
+                  setStream(prev => prev ? {
+                    ...prev,
+                    followerCount: (prev.followerCount ?? 0) + (isFollowing ? 1 : -1)
+                  } : null);
+                }}
+              />
+            </View>
+            <View style={styles.portraitChatContainer}>
+              <ChatView 
+                channel={{
+                  roomArn: stream.chatRoomArn,
+                  displayName: stream.displayName
+                }}
+                onBack={() => navigation.goBack()}
+                showHeader={false}
+                isFullscreen={true}
+              />
+            </View>
           </View>
         )}
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -549,6 +618,49 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  portraitContainer: {
+    backgroundColor: '#000',
+  },
+  portraitPlayerContainer: {
+    width: width,
+    height: height,
+  },
+  portraitChatOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 5,
+  },
+  portraitHeader: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 44 : 0,
+    left: 0,
+    right: 0,
+    padding: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  portraitTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    flex: 1,
+    marginRight: 10,
+  },
+  portraitChatContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '45%', // Increased height for messages
+    backgroundColor: 'transparent',
+    paddingBottom: Platform.OS === 'ios' ? 34 : 0, // Safe area padding
   },
   loadingContainer: {
     flex: 1,
@@ -559,12 +671,56 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
   error: {
-    color: '#FF3B30',
-    textAlign: 'center',
+    color: 'red',
     fontSize: 16,
+  },
+  chatContainer: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  chatMessage: {
+    color: '#fff',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  errorText: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  controlsOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 2,
+  },
+  playerContainerFullscreen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '75%',
+    height: '100%',
+    backgroundColor: '#000',
+    zIndex: 1,
+    overflow: 'hidden',
+  },
+  player: {
+    backgroundColor: '#000',
   },
   playerContainer: {
     width: width,
@@ -578,12 +734,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  player: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    zIndex: 1,
   },
   controls: {
     ...StyleSheet.absoluteFillObject,
@@ -654,12 +804,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
-  chatContainer: {
-    flex: 1,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fff',
-  },
   chatContainerFullscreen: {
     position: 'absolute',
     right: 0,
@@ -691,37 +835,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-  },
-  errorText: {
-    color: '#fff',
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 15,
-  },
-  retryButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  controlsOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    zIndex: 2,
-  },
-  playerContainerFullscreen: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '75%',
-    height: '100%',
-    backgroundColor: '#000',
-    zIndex: 1,
-    overflow: 'hidden',
   },
 }); 

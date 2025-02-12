@@ -104,9 +104,9 @@ android {
         release {
             if (project.hasProperty('UPLOAD_STORE_FILE')) {
                 storeFile file(UPLOAD_STORE_FILE)
-                storePassword UPLOAD_STORE_PASSWORD
-                keyAlias UPLOAD_KEY_ALIAS
-                keyPassword UPLOAD_KEY_PASSWORD
+                storePassword System.getenv('UPLOAD_STORE_PASSWORD') ?: UPLOAD_STORE_PASSWORD
+                keyAlias System.getenv('UPLOAD_KEY_ALIAS') ?: UPLOAD_KEY_ALIAS
+                keyPassword System.getenv('UPLOAD_KEY_PASSWORD') ?: UPLOAD_KEY_PASSWORD
             }
         }
     }
@@ -115,7 +115,7 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            signingConfig signingConfigs.release
+            signingConfig project.hasProperty('UPLOAD_STORE_FILE') ? signingConfigs.release : signingConfigs.debug
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
