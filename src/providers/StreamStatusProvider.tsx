@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { generateClient } from 'aws-amplify/api';
 import type { Schema } from '../../amplify/data/resource';
 
@@ -15,7 +15,7 @@ interface LiveChannel extends Profile {
 interface StreamStatusContextType {
   liveChannels: LiveChannel[];
   isLoading: boolean;
-  error: string | null;
+  error: Error | null;
 }
 
 const StreamStatusContext = createContext<StreamStatusContextType>({
@@ -32,53 +32,53 @@ function constructThumbnailUrl(recording: Recording): string {
 export function StreamStatusProvider({ children }: { children: React.ReactNode }) {
   const [liveChannels, setLiveChannels] = useState<LiveChannel[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
 
-  // Fetch initial live streams and set up subscription
   useEffect(() => {
     const fetchLiveStreams = async () => {
       try {
         setIsLoading(true);
         setError(null);
 
-        // Query for active stream sessions and their associated profiles
-        const { data: sessions } = await client.models.StreamSession.list({
-          filter: {
-            status: { eq: 'LIVE' }
-          }
+        // Get live sessions
+        const sessionsResponse = await client.models.StreamSession.list({
+          filter: { status: { eq: 'LIVE' } }
         });
+        const sessions = sessionsResponse.data;
 
-        if (sessions.length > 0) {
+        if (sessions && sessions.length > 0) {
           // Get unique profile IDs
-          const profileIds = [...new Set(sessions.map(session => session.profileId))];
+          const profileIds = [...new Set(sessions.map((session: StreamSession) => session.profileId))];
           
-          // Fetch profiles for live sessions
-          const { data: profiles } = await client.models.Profile.list({
+          // Get profiles
+          const profilesResponse = await client.models.Profile.list({
             filter: {
               or: profileIds
                 .filter((id): id is string => id !== null)
                 .map(id => ({ id: { eq: id } }))
             }
           });
+          const profiles = profilesResponse.data;
 
-          // Fetch active recordings for these sessions
-          const { data: recordings } = await client.models.Recording.list({
+          // Get recordings
+          const recordingsResponse = await client.models.Recording.list({
             filter: {
               and: [
                 {
                   or: sessions
-                    .filter(s => s.id !== null)
-                    .map(s => ({ streamSessionId: { eq: s.id } }))
+                    .filter((s: StreamSession) => s.id !== null)
+                    .map((s: StreamSession) => ({ streamSessionId: { eq: s.id } }))
                 },
                 { recordingStatus: { eq: 'STARTED' } }
               ]
             }
           });
+          const recordings = recordingsResponse.data;
 
           // Map recordings to profiles
-          const liveChannelsWithThumbnails = profiles.map(profile => {
-            const session = sessions.find(s => s.profileId === profile.id);
-            const recording = session ? recordings.find(r => r.streamSessionId === session.id) : undefined;
+          const channelsWithThumbnails = profiles.map((profile: Profile) => {
+            const session = sessions.find((s: StreamSession) => s.profileId === profile.id);
+            const recording = session ? recordings.find((r: Recording) => r.streamSessionId === session.id) : undefined;
             
             return {
               ...profile,
@@ -86,19 +86,13 @@ export function StreamStatusProvider({ children }: { children: React.ReactNode }
             };
           });
 
-          console.log('Found live streams:', {
-            sessions: sessions.length,
-            profiles: profiles.length,
-            recordings: recordings.length
-          });
-
-          setLiveChannels(liveChannelsWithThumbnails);
+          setLiveChannels(channelsWithThumbnails);
         } else {
           setLiveChannels([]);
         }
       } catch (err) {
         console.error('Error fetching live streams:', err);
-        setError('Failed to fetch live streams');
+        setError(err instanceof Error ? err : new Error('Failed to fetch live streams'));
       } finally {
         setIsLoading(false);
       }
@@ -107,84 +101,14 @@ export function StreamStatusProvider({ children }: { children: React.ReactNode }
     // Initial fetch
     fetchLiveStreams();
 
-    // Subscribe to StreamSession changes
-    const subscription = client.models.StreamSession.observeQuery({
-      filter: {
-        status: { eq: 'LIVE' }
-      }
-    }).subscribe({
-      next: async ({ items: sessions }) => {
-        try {
-          if (sessions.length > 0) {
-            const profileIds = [...new Set(sessions.map(session => session.profileId))];
-            const { data: profiles } = await client.models.Profile.list({
-              filter: {
-                or: profileIds
-                  .filter((id): id is string => id !== null)
-                  .map(id => ({ id: { eq: id } }))
-              }
-            });
+    // Poll every 5 seconds
+    const interval = setInterval(fetchLiveStreams, 5000);
 
-            // Fetch active recordings for these sessions
-            const { data: recordings } = await client.models.Recording.list({
-              filter: {
-                and: [
-                  {
-                    or: sessions
-                      .filter(s => s.id !== null)
-                      .map(s => ({ streamSessionId: { eq: s.id } }))
-                  },
-                  { recordingStatus: { eq: 'STARTED' } }
-                ]
-              }
-            });
-
-            // Map recordings to profiles
-            const liveChannelsWithThumbnails = profiles.map(profile => {
-              const session = sessions.find(s => s.profileId === profile.id);
-              const recording = session ? recordings.find(r => r.streamSessionId === session.id) : undefined;
-              
-              return {
-                ...profile,
-                thumbnailUrl: recording ? constructThumbnailUrl(recording) : undefined
-              };
-            });
-
-            console.log('Stream session subscription update:', {
-              sessions: sessions.length,
-              profiles: profiles.length,
-              recordings: recordings.length
-            });
-
-            setLiveChannels(liveChannelsWithThumbnails);
-          } else {
-            setLiveChannels([]);
-          }
-        } catch (err) {
-          console.error('Error processing stream session update:', err);
-          setError('Failed to process stream update');
-        }
-      },
-      error: (err) => {
-        console.error('Stream session subscription error:', err);
-        setError('Stream subscription error');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => clearInterval(interval);
   }, []);
 
-  // Memoize the context value
-  const contextValue = useMemo(() => ({
-    liveChannels,
-    isLoading,
-    error
-  }), [liveChannels, isLoading, error]);
-
   return (
-    <StreamStatusContext.Provider value={contextValue}>
+    <StreamStatusContext.Provider value={{ liveChannels, isLoading, error }}>
       {children}
     </StreamStatusContext.Provider>
   );

@@ -93,21 +93,11 @@ export default function BrowseScreen() {
     );
   };
 
-  if (isLoading) {
-    return (
-      <MainLayout navigation={navigation} route={route}>
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-        </View>
-      </MainLayout>
-    );
-  }
-
   if (error) {
     return (
       <MainLayout navigation={navigation} route={route}>
         <View style={styles.centerContainer}>
-          <Text style={styles.error}>{error}</Text>
+          <Text style={styles.error}>{error.message}</Text>
         </View>
       </MainLayout>
     );
@@ -118,7 +108,16 @@ export default function BrowseScreen() {
       <View style={styles.container}>
         {liveChannels.length === 0 ? (
           <View style={styles.centerContainer}>
-            <Text style={styles.noStreamsText}>No live streams available</Text>
+            <View style={styles.messageContainer}>
+              <Text style={styles.noStreamsText}>No live streams available</Text>
+              {isLoading && (
+                <ActivityIndicator 
+                  size="small" 
+                  color="#007AFF" 
+                  style={styles.loadingIndicator} 
+                />
+              )}
+            </View>
           </View>
         ) : (
           <FlatList
@@ -128,6 +127,8 @@ export default function BrowseScreen() {
             numColumns={2}
             columnWrapperStyle={styles.row}
             contentContainerStyle={styles.list}
+            refreshing={isLoading}
+            onRefresh={() => {}} // No-op since we're polling automatically
           />
         )}
       </View>
@@ -187,9 +188,20 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     textAlign: 'center',
   },
+  messageContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    minHeight: 60, // Ensure there's space for both text and loader
+  },
   noStreamsText: {
     color: '#666',
     fontSize: 16,
+    textAlign: 'center',
+  },
+  loadingIndicator: {
+    position: 'absolute',
+    top: '100%',
+    marginTop: 8,
   },
   thumbnailError: {
     backgroundColor: '#1a1a1a',
