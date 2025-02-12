@@ -1,0 +1,10 @@
+{
+  "name": "recording-handler",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@aws-amplify/api": "^6.2.3",
+    "@aws-amplify/core": "^6.1.0",
+    "@aws-sdk/client-appsync": "^3.744.0"
+  }
+}

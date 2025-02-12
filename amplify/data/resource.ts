@@ -36,6 +36,8 @@ const schema = a.schema({
     .authorization(allow => [
       // All authenticated users can read profiles
       allow.authenticated().to(['read']),
+      // API key can read profiles for recording updates
+      allow.publicApiKey().to(['read']),
       // Only owner can create/update/delete their own profile
       allow.owner().to(['create', 'update', 'delete'])
     ]),
@@ -54,6 +56,7 @@ const schema = a.schema({
     })
     .authorization(allow => [
       allow.authenticated().to(['read']),
+      allow.publicApiKey().to(['read']),
       allow.owner().to(['create', 'update', 'delete'])
     ]),
 
@@ -73,8 +76,9 @@ const schema = a.schema({
       endTime: a.string()
     })
     .authorization(allow => [
+      allow.publicApiKey().to(['create', 'update']),
       allow.authenticated().to(['read']),
-      allow.owner().to(['create', 'update', 'delete'])
+      allow.owner().to(['delete'])
     ]),
 
   ChatMessage: a
@@ -114,7 +118,11 @@ const schema = a.schema({
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: 'userPool'
+    defaultAuthorizationMode: 'userPool',
+    apiKeyAuthorizationMode: {
+      expiresInDays: 30,
+      description: 'API key for recording handler'
+    }
   }
 });
 

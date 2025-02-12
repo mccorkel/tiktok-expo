@@ -39,3 +39,4 @@ yarn-error.*
 .amplify
 amplify_outputs*
 amplifyconfiguration*
+func-recording-handler/Archive.zip

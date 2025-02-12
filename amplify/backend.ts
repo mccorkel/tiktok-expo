@@ -8,7 +8,17 @@ import { data } from './data/resource';
  */
 const backend = defineBackend({
   auth,
-  data
+  data: {
+    ...data,
+    authorizationModes: {
+      defaultAuthorizationMode: 'userPool',
+      // Add API key auth mode
+      apiKeyAuthorizationMode: {
+        expiresInDays: 30,
+        description: 'API key for recording handler'
+      }
+    }
+  }
 });
 
 // Configure IVS and IVS Chat permissions for authenticated users
