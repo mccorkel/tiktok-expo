@@ -28,6 +28,7 @@ const schema = a.schema({
       ingestEndpoint: a.string(),
       playbackUrl: a.string(),
       isLive: a.boolean(),
+      isModerator: a.boolean().default(false),
       lastStreamedAt: a.string(),
       receivedFollows: a.hasMany('Follow', 'followeeId'),
       givenFollows: a.hasMany('Follow', 'followerId'),

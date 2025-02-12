@@ -5,7 +5,7 @@ import outputs from '../../amplify_outputs.json';
 
 const AWS_REGION = 'us-east-1';
 const IDENTITY_POOL_ID = outputs.auth.identity_pool_id;
-const RECORDING_CONFIGURATION_ARN = 'arn:aws:ivs:us-east-1:525894077320:recording-configuration/8yd1f8ATA0TD';
+const RECORDING_CONFIGURATION_ARN = 'arn:aws:ivs:us-east-1:525894077320:recording-configuration/wK2p3WOIGpsG';
 
 export interface Channel {
   arn: string;
