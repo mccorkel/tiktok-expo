@@ -40,3 +40,6 @@ yarn-error.*
 amplify_outputs*
 amplifyconfiguration*
 func-recording-handler/Archive.zip
+
+# Lambda config with sensitive data
+amplify/functions/recording-handler/config.ts

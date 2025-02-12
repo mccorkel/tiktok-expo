@@ -5,6 +5,7 @@ specifies that any unauthenticated user can "create", "read", "update",
 and "delete" any "Todo" records.
 =========================================================================*/
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
+import { recordingHandler } from '../functions/recording-handler/resource';
 
 const schema = a.schema({
   Todo: a
@@ -56,7 +57,7 @@ const schema = a.schema({
     })
     .authorization(allow => [
       allow.authenticated().to(['read']),
-      allow.publicApiKey().to(['read']),
+      allow.publicApiKey().to(['read', 'create', 'update']),
       allow.owner().to(['create', 'update', 'delete'])
     ]),
 
@@ -113,7 +114,10 @@ const schema = a.schema({
     ]),
     
   // Removed ChatRoom model since we're using IVS stack's chat room
-});
+})
+.authorization(allow => [
+  allow.resource(recordingHandler)
+]);
 
 export const data = defineData({
   schema,

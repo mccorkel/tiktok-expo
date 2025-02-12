@@ -1,0 +1,13 @@
+{
+  "name": "recording-handler",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-appsync": "^3.525.0",
+    "@aws-sdk/client-lambda": "^3.525.0",
+    "aws-lambda": "^1.0.7",
+    "graphql": "^16.8.1",
+    "graphql-tag": "^2.12.6",
+    "node-fetch": "^3.3.2"
+  }
+} 
