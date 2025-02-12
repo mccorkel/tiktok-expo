@@ -9,6 +9,9 @@
     "rootDir": ".",
     "sourceMap": true,
     "declaration": true,
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
     "types": ["node", "aws-lambda"]
   },
   "include": [
