@@ -36,9 +36,15 @@ yarn-error.*
 *.tsbuildinfo
 
 # amplify
-#.amplify
-#amplify_outputs*
-#amplifyconfiguration*
+amplify/functions/*/
+amplify/functions/*/node_modules/
+amplify/functions/*/*.ts
+amplify/functions/*/*.js
+amplify/functions/*/*.json
+amplify/functions/*/*.mjs
+.amplify
+amplify_outputs*
+amplifyconfiguration*
 
 /android
 /ios

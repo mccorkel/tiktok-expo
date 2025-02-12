@@ -17,7 +17,8 @@
       "bundleIdentifier": "com.anonymous.tiktokexpo",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera for live streaming",
-        "NSMicrophoneUsageDescription": "This app uses the microphone for live streaming"
+        "NSMicrophoneUsageDescription": "This app uses the microphone for live streaming",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
