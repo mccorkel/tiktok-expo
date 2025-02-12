@@ -77,7 +77,7 @@ const schema = a.schema({
       endTime: a.string()
     })
     .authorization(allow => [
-      allow.publicApiKey().to(['create', 'update']),
+      allow.publicApiKey().to(['create', 'update', 'read']),
       allow.authenticated().to(['read']),
       allow.owner().to(['delete'])
     ]),
