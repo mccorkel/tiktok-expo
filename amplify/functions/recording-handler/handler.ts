@@ -74,8 +74,8 @@ type CreateStreamSessionResponse = {
 // Initialize AppSync client
 console.log('Using environment variables:', {
   REGION: process.env.REGION,
-  GRAPHQL_API_URL: process.env.GRAPHQL_API_URL,
-  GRAPHQL_API_KEY: process.env.GRAPHQL_API_KEY ? '[REDACTED]' : undefined
+  GRAPHQL_ENDPOINT: process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT,
+  API_KEY: process.env.GRAPHQL_API_KEY_MANUAL ? '[REDACTED]' : undefined
 });
 
 const client = new AppSyncClient({
@@ -158,22 +158,22 @@ const CREATE_STREAM_SESSION = print(gql`
 
 // Helper function to execute GraphQL operations
 async function executeGraphQL<T>(operation: string, variables: any): Promise<T> {
-  if (!process.env.GRAPHQL_API_URL) {
-    throw new Error('GRAPHQL_API_URL environment variable is not set');
+  if (!process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT) {
+    throw new Error('AMPLIFY_DATA_GRAPHQL_ENDPOINT environment variable is not set');
   }
 
-  if (!process.env.GRAPHQL_API_KEY) {
-    throw new Error('GRAPHQL_API_KEY environment variable is not set');
+  if (!process.env.GRAPHQL_API_KEY_MANUAL) {
+    throw new Error('GRAPHQL_API_KEY_MANUAL environment variable is not set');
   }
 
   console.log('Executing GraphQL operation:', {
     operation,
     variables,
-    endpoint: process.env.GRAPHQL_API_URL
+    endpoint: process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT
   });
 
-  const endpoint = process.env.GRAPHQL_API_URL;
-  const apiKey = process.env.GRAPHQL_API_KEY;
+  const endpoint = process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT;
+  const apiKey = process.env.GRAPHQL_API_KEY_MANUAL;
 
   try {
     const response = await fetch(endpoint, {
