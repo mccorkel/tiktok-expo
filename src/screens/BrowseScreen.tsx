@@ -31,7 +31,8 @@ const client = generateClient<Schema>();
 type Profile = Schema['Profile']['type'];
 interface StreamWithThumbnail extends Profile {
   thumbnailError?: boolean;
-  thumbnailKey?: number; // Used to force image refresh
+  thumbnailKey?: number;
+  thumbnailUrl?: string;
 }
 
 type RootStackParamList = {
@@ -70,9 +71,17 @@ export default function BrowseScreen() {
         onPress={() => handleStreamPress(item)}
       >
         <View style={styles.thumbnailContainer}>
-          <View style={[styles.thumbnail, styles.thumbnailError]}>
-            <Text style={styles.thumbnailErrorText}>Live Stream</Text>
-          </View>
+          {item.thumbnailUrl ? (
+            <Image
+              source={{ uri: item.thumbnailUrl }}
+              style={styles.thumbnail}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.thumbnail, styles.thumbnailError]}>
+              <Text style={styles.thumbnailErrorText}>Live Stream</Text>
+            </View>
+          )}
           <View style={styles.liveIndicator}>
             <Text style={styles.liveText}>LIVE</Text>
           </View>

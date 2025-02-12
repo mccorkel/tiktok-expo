@@ -47,6 +47,7 @@ type StreamSession = {
 type Recording = {
   id: string;
   recordingStatus: string;
+  streamSessionId: string;
 };
 
 type ListProfilesResponse = {
@@ -151,6 +152,18 @@ const CREATE_STREAM_SESSION = print(gql`
       startTime
       status
       viewerCount
+      duration
+    }
+  }
+`);
+
+// Add new mutation for updating stream session
+const UPDATE_STREAM_SESSION = print(gql`
+  mutation UpdateStreamSession($input: UpdateStreamSessionInput!) {
+    updateStreamSession(input: $input) {
+      id
+      status
+      endTime
       duration
     }
   }
@@ -313,6 +326,7 @@ export const handler = async (
               items {
                 id
                 recordingStatus
+                streamSessionId
               }
             }
           }
@@ -327,7 +341,7 @@ export const handler = async (
         const recording = recordingsData.listRecordings.items[0];
         if (recording) {
           console.log('Updating recording:', recording.id);
-          const updateResult = await executeGraphQL(UPDATE_RECORDING, {
+          const updateRecordingResult = await executeGraphQL(UPDATE_RECORDING, {
             input: {
               id: recording.id,
               recordingStatus: 'COMPLETED',
@@ -336,7 +350,19 @@ export const handler = async (
               endTime: new Date().toISOString()
             }
           });
-          console.log('Recording updated:', JSON.stringify(updateResult, null, 2));
+          console.log('Recording updated:', JSON.stringify(updateRecordingResult, null, 2));
+
+          // Update the associated stream session
+          console.log('Updating stream session:', recording.streamSessionId);
+          const updateStreamSessionResult = await executeGraphQL(UPDATE_STREAM_SESSION, {
+            input: {
+              id: recording.streamSessionId,
+              status: 'ENDED',
+              endTime: new Date().toISOString(),
+              duration: Math.floor(detail.recording_duration_ms / 1000) // Convert ms to seconds
+            }
+          });
+          console.log('Stream session updated:', JSON.stringify(updateStreamSessionResult, null, 2));
         }
         break;
       }

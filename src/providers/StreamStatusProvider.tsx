@@ -1,15 +1,19 @@
-import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { generateClient } from 'aws-amplify/api';
 import type { Schema } from '../../amplify/data/resource';
-import { IVSService } from '../services/IVSService';
 
 const client = generateClient<Schema>();
-const ivsService = new IVSService();
 
 type Profile = Schema['Profile']['type'];
+type StreamSession = Schema['StreamSession']['type'];
+type Recording = Schema['Recording']['type'];
+
+interface LiveChannel extends Profile {
+  thumbnailUrl?: string;
+}
 
 interface StreamStatusContextType {
-  liveChannels: Profile[];
+  liveChannels: LiveChannel[];
   isLoading: boolean;
   error: string | null;
 }
@@ -20,141 +24,157 @@ const StreamStatusContext = createContext<StreamStatusContextType>({
   error: null
 });
 
+// Helper function to construct thumbnail URL from recording data
+function constructThumbnailUrl(recording: Recording): string {
+  return `https://${recording.s3BucketName}.s3.us-east-1.amazonaws.com/${recording.s3KeyPrefix}/media/latest_thumbnail/thumb.jpg`;
+}
+
 export function StreamStatusProvider({ children }: { children: React.ReactNode }) {
-  const [liveChannels, setLiveChannels] = useState<Profile[]>([]);
+  const [liveChannels, setLiveChannels] = useState<LiveChannel[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
 
-  // Fetch all profiles once when the component mounts
+  // Fetch initial live streams and set up subscription
   useEffect(() => {
-    const fetchProfiles = async () => {
+    const fetchLiveStreams = async () => {
       try {
         setIsLoading(true);
-        const { data } = await client.models.Profile.list();
-        
-        // Only keep profiles that have a channelArn
-        const validProfiles = data.filter(profile => profile.channelArn);
-        console.log('All profiles:', data.length);
-        console.log('Valid profiles with channels:', validProfiles.length);
-        console.log('Profile details:', validProfiles.map(p => ({ 
-          displayName: p.displayName, 
-          channelArn: p.channelArn,
-          userId: p.userId
-        })));
-        setProfiles(validProfiles);
+        setError(null);
+
+        // Query for active stream sessions and their associated profiles
+        const { data: sessions } = await client.models.StreamSession.list({
+          filter: {
+            status: { eq: 'LIVE' }
+          }
+        });
+
+        if (sessions.length > 0) {
+          // Get unique profile IDs
+          const profileIds = [...new Set(sessions.map(session => session.profileId))];
+          
+          // Fetch profiles for live sessions
+          const { data: profiles } = await client.models.Profile.list({
+            filter: {
+              or: profileIds
+                .filter((id): id is string => id !== null)
+                .map(id => ({ id: { eq: id } }))
+            }
+          });
+
+          // Fetch active recordings for these sessions
+          const { data: recordings } = await client.models.Recording.list({
+            filter: {
+              and: [
+                {
+                  or: sessions
+                    .filter(s => s.id !== null)
+                    .map(s => ({ streamSessionId: { eq: s.id } }))
+                },
+                { recordingStatus: { eq: 'STARTED' } }
+              ]
+            }
+          });
+
+          // Map recordings to profiles
+          const liveChannelsWithThumbnails = profiles.map(profile => {
+            const session = sessions.find(s => s.profileId === profile.id);
+            const recording = session ? recordings.find(r => r.streamSessionId === session.id) : undefined;
+            
+            return {
+              ...profile,
+              thumbnailUrl: recording ? constructThumbnailUrl(recording) : undefined
+            };
+          });
+
+          console.log('Found live streams:', {
+            sessions: sessions.length,
+            profiles: profiles.length,
+            recordings: recordings.length
+          });
+
+          setLiveChannels(liveChannelsWithThumbnails);
+        } else {
+          setLiveChannels([]);
+        }
       } catch (err) {
-        console.error('Error fetching profiles:', err);
-        setError('Failed to fetch profiles');
+        console.error('Error fetching live streams:', err);
+        setError('Failed to fetch live streams');
       } finally {
         setIsLoading(false);
       }
     };
-    fetchProfiles();
 
-    // Set up subscription for new profiles
-    const sub = client.models.Profile.observeQuery().subscribe({
-      next: ({ items }) => {
-        const validProfiles = items.filter(profile => profile.channelArn);
-        console.log('Profile subscription update:');
-        console.log('- Total profiles:', items.length);
-        console.log('- Profiles with channels:', validProfiles.length);
-        console.log('- Profile details:', validProfiles.map(p => ({ 
-          displayName: p.displayName, 
-          channelArn: p.channelArn,
-          userId: p.userId
-        })));
-        setProfiles(validProfiles);
+    // Initial fetch
+    fetchLiveStreams();
+
+    // Subscribe to StreamSession changes
+    const subscription = client.models.StreamSession.observeQuery({
+      filter: {
+        status: { eq: 'LIVE' }
+      }
+    }).subscribe({
+      next: async ({ items: sessions }) => {
+        try {
+          if (sessions.length > 0) {
+            const profileIds = [...new Set(sessions.map(session => session.profileId))];
+            const { data: profiles } = await client.models.Profile.list({
+              filter: {
+                or: profileIds
+                  .filter((id): id is string => id !== null)
+                  .map(id => ({ id: { eq: id } }))
+              }
+            });
+
+            // Fetch active recordings for these sessions
+            const { data: recordings } = await client.models.Recording.list({
+              filter: {
+                and: [
+                  {
+                    or: sessions
+                      .filter(s => s.id !== null)
+                      .map(s => ({ streamSessionId: { eq: s.id } }))
+                  },
+                  { recordingStatus: { eq: 'STARTED' } }
+                ]
+              }
+            });
+
+            // Map recordings to profiles
+            const liveChannelsWithThumbnails = profiles.map(profile => {
+              const session = sessions.find(s => s.profileId === profile.id);
+              const recording = session ? recordings.find(r => r.streamSessionId === session.id) : undefined;
+              
+              return {
+                ...profile,
+                thumbnailUrl: recording ? constructThumbnailUrl(recording) : undefined
+              };
+            });
+
+            console.log('Stream session subscription update:', {
+              sessions: sessions.length,
+              profiles: profiles.length,
+              recordings: recordings.length
+            });
+
+            setLiveChannels(liveChannelsWithThumbnails);
+          } else {
+            setLiveChannels([]);
+          }
+        } catch (err) {
+          console.error('Error processing stream session update:', err);
+          setError('Failed to process stream update');
+        }
       },
-      error: (err) => console.error('Profile subscription error:', err)
+      error: (err) => {
+        console.error('Stream session subscription error:', err);
+        setError('Stream subscription error');
+      }
     });
 
     return () => {
-      sub.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
-
-  // Memoize the check channel status function
-  const checkChannelStatus = useCallback(async (profile: Profile) => {
-    try {
-      const isLive = await ivsService.checkChannelLiveStatus(profile.channelArn!);
-      return { profile, isLive };
-    } catch (err) {
-      console.error(`Error checking channel ${profile.channelArn}:`, err);
-      return { profile, isLive: false };
-    }
-  }, []);
-
-  const checkChannelStatuses = useCallback(async () => {
-    try {
-      setError(null);
-      
-      if (profiles.length === 0) {
-        console.log('No profiles found to check. Waiting for profiles to be loaded...');
-        return;
-      }
-
-      console.log('Starting channel status check:');
-      console.log('- Total profiles to check:', profiles.length);
-      console.log('- Profile list:', profiles.map(p => ({ 
-        displayName: p.displayName, 
-        channelArn: p.channelArn 
-      })));
-      
-      // Check all channels in parallel
-      const results = await Promise.all(
-        profiles.map(async profile => {
-          try {
-            console.log(`Checking channel for ${profile.displayName}...`);
-            const isLive = await ivsService.checkChannelLiveStatus(profile.channelArn!);
-            console.log(`Channel status for ${profile.displayName}: ${isLive ? 'LIVE' : 'offline'}`);
-            return { profile, isLive };
-          } catch (err) {
-            console.error(`Error checking channel ${profile.channelArn} for ${profile.displayName}:`, err);
-            return { profile, isLive: false };
-          }
-        })
-      );
-
-      // Update live channels state
-      const newLiveChannels = results
-        .filter(result => result.isLive)
-        .map(result => result.profile);
-
-      console.log('Channel status check complete:');
-      console.log('- Total channels checked:', results.length);
-      console.log('- Live channels found:', newLiveChannels.length);
-      console.log('- Live channel details:', newLiveChannels.map(p => ({ 
-        displayName: p.displayName, 
-        channelArn: p.channelArn 
-      })));
-      
-      setLiveChannels(prevLiveChannels => {
-        // Only update state if there's an actual change
-        if (JSON.stringify(prevLiveChannels) !== JSON.stringify(newLiveChannels)) {
-          console.log('Updating live channels state');
-          return newLiveChannels;
-        }
-        return prevLiveChannels;
-      });
-    } catch (err) {
-      console.error('Error checking channel statuses:', err);
-      setError('Failed to check channel statuses');
-    }
-  }, [profiles]);
-
-  // Set up polling
-  useEffect(() => {
-    // Initial check
-    checkChannelStatuses();
-
-    // Set up polling every 10 seconds
-    const interval = setInterval(checkChannelStatuses, 10000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [checkChannelStatuses]);
 
   // Memoize the context value
   const contextValue = useMemo(() => ({
