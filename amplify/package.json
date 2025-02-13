@@ -1,3 +1,7 @@
 {
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-rekognition": "^3.744.0",
+    "@aws-sdk/client-s3": "^3.744.0"
+  }
 }
