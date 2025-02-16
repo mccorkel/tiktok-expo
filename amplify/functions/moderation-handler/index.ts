@@ -1,6 +1,6 @@
 import type { Handler } from 'aws-lambda';
 import { S3Client, ListObjectsV2Command, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { RekognitionClient, DetectModerationLabelsCommand } from '@aws-sdk/client-rekognition';
+import { RekognitionClient, DetectModerationLabelsCommand } from "@aws-sdk/client-rekognition";
 
 type ModerationEvent = {
   bucketName: string;
