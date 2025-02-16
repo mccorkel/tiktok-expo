@@ -2,15 +2,13 @@
   "name": "moderation-handler",
   "version": "1.0.0",
   "dependencies": {
-    "aws-lambda": "^1.0.7"
+    "aws-lambda": "^1.0.7",
+    "@aws-sdk/client-rekognition": "^3.749.0",
+    "@aws-sdk/client-s3": "^3.749.0"
   },
   "devDependencies": {
     "@aws-sdk/types": "^3.525.0",
     "@types/aws-lambda": "^8.10.136",
     "@types/node": "^20.11.24"
-  },
-  "peerDependencies": {
-    "@aws-sdk/client-rekognition": "^3.749.0",
-    "@aws-sdk/client-s3": "^3.749.0"
   }
 }
