@@ -1,4 +1,4 @@
-import { IvsClient, CreateChannelCommand, CreateStreamKeyCommand, GetStreamKeyCommand, ListStreamKeysCommand, DeleteStreamKeyCommand, CreateChannelCommandOutput, GetChannelCommand, GetChannelCommandOutput, GetStreamCommand, CreateRecordingConfigurationCommand, GetRecordingConfigurationCommand, ListRecordingConfigurationsCommand, ListStreamSessionsCommand, type CreateRecordingConfigurationCommandOutput, type ThumbnailConfigurationStorage, type RecordingMode, type RenditionConfigurationRendition, type ThumbnailConfigurationResolution, type RenditionConfigurationRenditionSelection, type CreateRecordingConfigurationCommandInput } from '@aws-sdk/client-ivs';
+import { IvsClient, CreateChannelCommand, CreateStreamKeyCommand, GetStreamKeyCommand, ListStreamKeysCommand, DeleteStreamKeyCommand, CreateChannelCommandOutput, GetChannelCommand, GetStreamCommand, GetRecordingConfigurationCommand, ListStreamsCommand } from '@aws-sdk/client-ivs';
 import { IvschatClient, CreateRoomCommand, CreateRoomCommandOutput } from '@aws-sdk/client-ivschat';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import outputs from '../../amplify_outputs.json';
@@ -140,34 +140,32 @@ export class IVSService {
       const ivsClient = await this.getIVSClient();
       console.log('IVS client initialized');
       
-      const command = new ListStreamSessionsCommand({
-        channelArn,
-        maxResults: 1
+      const command = new GetStreamCommand({
+        channelArn
       });
-      console.log('ListStreamSessionsCommand created:', {
-        params: { channelArn, maxResults: 1 }
+      console.log('GetStreamCommand created:', {
+        params: { channelArn }
       });
 
-      console.log('Sending ListStreamSessionsCommand...');
+      console.log('Sending GetStreamCommand...');
       const response = await ivsClient.send(command);
-      console.log('ListStreamSessions response received:', {
-        hasStreamSessions: Boolean(response.streamSessions),
-        sessionCount: response.streamSessions?.length || 0,
-        nextToken: response.nextToken,
+      console.log('GetStream response received:', {
+        hasStreamSessions: Boolean(response.stream),
+        stream: response.stream,
         raw: JSON.stringify(response, null, 2)
       });
       
       // If there's no active stream session, return null
-      if (!response.streamSessions || response.streamSessions.length === 0) {
+      if (!response.stream) {
         console.log('No stream sessions found for channel:', {
           channelArn,
-          reason: !response.streamSessions ? 'streamSessions is undefined' : 'streamSessions array is empty'
+          reason: !response.stream ? 'stream is undefined' : 'stream is null'
         });
         return null;
       }
 
       // Get the most recent stream session
-      const streamSession = response.streamSessions[0];
+      const streamSession = response.stream as any;
       console.log('Most recent stream session:', {
         streamId: streamSession.streamId,
         startTime: streamSession.startTime,
@@ -431,14 +429,16 @@ export class IVSService {
     try {
       const ivsClient = await this.getIVSClient();
       
-      const command = new ListRecordingConfigurationsCommand({});
+      const command = new GetRecordingConfigurationCommand({
+        arn: RECORDING_CONFIGURATION_ARN
+      });
       const response = await ivsClient.send(command);
 
-      console.log('All recording configurations:', 
-        JSON.stringify(response.recordingConfigurations, null, 2)
+      console.log('Recording configuration:', 
+        JSON.stringify(response.recordingConfiguration, null, 2)
       );
 
-      return response.recordingConfigurations;
+      return response.recordingConfiguration;
     } catch (error) {
       console.error('Error listing recording configurations:', error);
       throw error;

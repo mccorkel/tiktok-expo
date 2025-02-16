@@ -13,7 +13,7 @@
     "@api.video/react-native-livestream": "^2.0.2",
     "@aws-amplify/react-native": "^1.1.6",
     "@aws-amplify/ui-react-native": "^2.4.1",
-    "@aws-sdk/client-ivs": "^3.744.0",
+    "@aws-sdk/client-ivs": "^3.749.0",
     "@aws-sdk/client-ivs-realtime": "^3.744.0",
     "@aws-sdk/client-ivschat": "^3.743.0",
     "@craftzdog/react-native-buffer": "^6.0.5",
@@ -32,7 +32,9 @@
     "expo-asset": "~11.0.3",
     "expo-audio": "^0.3.4",
     "expo-av": "~15.0.2",
+    "expo-build-properties": "~0.13.2",
     "expo-camera": "~16.0.16",
+    "expo-screen-orientation": "~8.0.4",
     "expo-status-bar": "~2.0.1",
     "expo-system-ui": "^4.0.7",
     "expo-video": "~2.0.5",
@@ -50,9 +52,7 @@
     "react-native-webview": "13.12.5",
     "stream-browserify": "^3.0.0",
     "web-streams-polyfill": "^4.1.0",
-    "zod": "^3.24.1",
-    "expo-screen-orientation": "~8.0.4",
-    "expo-build-properties": "~0.13.2"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@aws-amplify/backend": "^1.14.0",
@@ -64,7 +64,7 @@
     "@types/react": "~18.3.12",
     "@types/react-native-vector-icons": "^6.4.18",
     "aws-cdk": "^2.177.0",
-    "aws-cdk-lib": "^2.177.0",
+    "aws-cdk-lib": "^2.178.2",
     "babel-plugin-module-resolver": "^5.0.2",
     "constructs": "^10.4.2",
     "esbuild": "^0.24.2",

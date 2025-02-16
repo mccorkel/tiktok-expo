@@ -13,5 +13,11 @@
         "../.amplify/generated/*"
       ]
     }
-  }
+  },
+  "include": [
+    "backend.ts",
+    "auth/**/*.ts",
+    "data/**/*.ts",
+    "functions/**/*.ts"
+  ]
 }

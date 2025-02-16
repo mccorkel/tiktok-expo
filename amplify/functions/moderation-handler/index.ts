@@ -1,7 +1,6 @@
 import type { Handler } from 'aws-lambda';
-
-const { S3Client, ListObjectsV2Command, GetObjectCommand, PutObjectCommand } = await import('@aws-sdk/client-s3');
-const { RekognitionClient, DetectModerationLabelsCommand } = await import('@aws-sdk/client-rekognition');
+import { S3Client, ListObjectsV2Command, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { RekognitionClient, DetectModerationLabelsCommand } from '@aws-sdk/client-rekognition';
 
 const s3Client = new S3Client({ region: process.env.REGION || 'us-east-1' });
 const rekognitionClient = new RekognitionClient({ region: process.env.REGION || 'us-east-1' });
